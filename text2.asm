@@ -87,8 +87,8 @@ PutC_OddStart		.equ	1
 	ld	(iy + PutC_GlyphWidth), a
 	; Row width offset
 	sbc	hl, hl
-	rra
 	ld	l, a
+	rr	l
 	jr	z, +_
 	set	PutC_OddWidth, (iy + PutC_Flags)
 _:	ex	de, hl
@@ -96,6 +96,19 @@ _:	ex	de, hl
 	or	a
 	sbc	hl, de
 	ld	(iy + PutC_RowAdvance), hl
+	; Loop control
+	rrca
+	ld	b, a
+	and	3
+	ld	(iy + PutC_FinalNibbles), a
+	ld	a, b
+	rrca
+	rrca
+	and	1Fh
+	ld	(iy + PutC_BytesPerLine), a
+	
+	; ???
+	
 	; Font height
 	ld	a, (fontHeight)
 	ld	(iy + PutC_FontWidth), a
@@ -117,5 +130,117 @@ _:	ld	a, (lcdRow)
 	add	hl, de
 	ld	de, (mpLcdBase)
 	add	hl, de
+	ex	de, hl
 	
 	
+	bit	PutC_OddStart, (iy + PutC_Flags)
+	jr	nz, PutCOddStart
+PutCEvenLoop:
+	ld	c, 255
+	ld	a, (iy + PutC_BytesPerLine)
+	or	a
+	jr	z, PutCEvenFinalNibbles
+	ld	b, a
+_:	ld	a, (ix)
+	inc	ix
+	PUT_C_DO_BYTE()
+	PUT_C_DO_BYTE()
+	PUT_C_DO_BYTE()
+	PUT_C_DO_BYTE()
+	djnz	-_
+PutCEvenFinalNibbles:
+	ld	a, (ix)
+	inc	ix
+	ld	a, (iy + PutCFinalNibbles)
+	or	a
+	jr	z, PutCEvenFinalBit
+	ld	b, a
+_:	PUT_C_DO_BYTE()
+	djnz	-_
+PutCEvenFinalBit:
+	bit	PutC_OddWidth, (iy + PutCFlags)
+	jr	z, +_
+	PUT_C_EVEN_NIBBLE()
+_:	ld	hl, (iy + PutC_RowAdvance)
+	add	hl, de
+	ex	de, hl
+	dec	(iy + PutC_GlyphHeight)
+	jp	nz, PutCEvenLoop
+	jp	PutCDone
+	
+PutCOddStart:
+PutCOddLoop:
+	ld	a, (iy + PutC_BytesPerLine)
+	or	a
+	jr	z, PutCOddFinalBits
+	ld	b, a
+PutCOddBodyLoop:
+	ld	a, (ix)
+	inc	ix
+	PUT_C_ODD_NIBBLE()
+	PUT_C_DO_BYTE()
+	PUT_C_DO_BYTE()
+	PUT_C_DO_BYTE()
+	PUT_C_EVEN_NIBBLE()
+	djnz	PutCOddBodyLoop
+	ld	a, (iy + PutC_FinalNibbles)
+	or	a
+	jr	nz, +_
+	bit	PutC_OddWidth, (iy + PutC_Flags)
+	jr	z, PutCOddNoFinalBit
+	xor	a
+_:	ld	a, (ix)
+	inc	ix
+	jr	z, PutCOddFinalBit
+	ld	b, a
+PutCOddFinalNibbles:
+	PUT_C_ODD_NIBBLE()
+	PUT_C_EVEN_NIBBLE()
+	djnz	PutCOddFinalNibbles
+	bit	PutC_OddWidth, (iy + PutC_Flags)
+	jr	z, PutCOddNoFinalBit
+PutCOddFinalBit:
+	PUT_C_EVEN_NIBBLE()
+PutCOddNoFinalBit:
+	ld	hl, (iy + PutC_RowAdvance)
+	add	hl, de
+	ex	de, hl
+	dec	(iy + PutC_GlyphHeight)
+	jp	nz, PutCOddLoop
+
+PutCDone:
+; Update cursor
+	ld	de, (lcdCol)
+	or	a
+	sbc	hl, hl
+	ld	a, (iy + PutC_GlyphWidth)
+	ld	l, a
+	add	hl, de
+	ld	de, 320
+	sbc	hl, de
+	add	hl, de
+	jr	c, +_
+	sbc	hl, hl
+	ld	a, (fontHeight)
+	ld	b, a
+	ld	a, (lcdRow)
+	add	a, b
+	ld	(lcdRow), a
+	add	a, b
+	cp	240
+	jr	c, +_
+	xor	a
+	ld	(lcdRow), a
+_:	ld	(lcdCol), hl
+; Close stack frame
+	ld	iy, PutC_LocalsSize
+	add	iy, sp
+	ld	sp, iy
+	pop	iy
+	pop	ix
+	pop	hl
+	pop	de
+	pop	bc
+	pop	af
+; End of function
+	ret
