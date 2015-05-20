@@ -13,14 +13,6 @@ PutC_OddStart		.equ	1
 ; Loop unrolling
 #macro PUT_C_DO_BYTE()
 	lea	hl, iy + PutC_ColorsCache	; One less memory access than LD HL, imm24; same as LD HL, imm16 in Z80 mode
-;	rlca
-;	jr	nc, $ + 3
-;	inc	hl
-;	rlca
-;	jr	nc, $ + 4
-;	inc	hl
-;	inc	hl
-;	ldi
 	rlca
 	jr	nc, $ + 4
 	inc	hl

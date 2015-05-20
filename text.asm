@@ -108,6 +108,7 @@ LoadFont:
 	ld	de, (ix + 4)
 	add	hl, de
 	ld	(fontDataPtr), hl
+	pop	ix
 	ret
 
 
@@ -155,52 +156,6 @@ NewLine:
 	; Glyph will extend past bottom of screen, so force wrap
 	xor	a
 	ld	(lcdRow), a
-	ret
-
-
-;------ ClearEOL ---------------------------------------------------------------
-ClearEOL:
-; Erases everything from the cursor to the right edge of the screen.
-; Inputs:
-;  - LCD cursor
-;  - Text background color
-; Output:
-;  - Erasing
-; Destroys:
-;  - AF
-;  - BC
-;  - DE
-;  - HL
-	push	ix
-	push	iy
-	ld	de, (lcdCol)
-	ld	hl, 320 - 1
-	or	a
-	sbc	hl, de
-	push	hl
-	pop	ix
-	;ld	a, (textBackColor)
-	xor	a
-	ld	iyl, 14
-	call	GetCursorPtr
-clearEolLoop:
-	push	hl
-	ld	(hl), a
-	ex	de, hl
-	or	a
-	sbc	hl, hl
-	add	hl, de
-	inc	de
-	push	ix
-	pop	bc
-	ldir
-	pop	hl
-	ld	de, 320
-	add	hl, de
-	dec	iyl
-	jr	nz, clearEolLoop
-	pop	iy
-	pop	ix
 	ret
 
 
