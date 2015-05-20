@@ -81,7 +81,7 @@ PutC_OddStart		.equ	1
 	sbc	hl, hl
 	ld	l, a
 	rr	l
-	jr	z, +_
+	jr	nc, +_
 	set	PutC_OddWidth, (iy + PutC_Flags)
 _:	ex	de, hl
 	ld	hl, 320 / 2
@@ -113,7 +113,7 @@ _:	ex	de, hl
 	ld	hl, (lcdCol)
 	srl	h
 	rr	l
-	jr	z, +_
+	jr	nc, +_
 	set	PutC_OddStart, (iy + PutC_Flags)
 _:	ld	a, (lcdRow)
 	ld	e, a
@@ -126,7 +126,7 @@ _:	ld	a, (lcdRow)
 	
 	
 	bit	PutC_OddStart, (iy + PutC_Flags)
-	jr	nz, PutCOddStart
+	jp	nz, PutCOddStart
 PutCEvenLoop:
 	ld	c, 255
 	ld	a, (iy + PutC_BytesPerLine)
@@ -141,19 +141,24 @@ _:	ld	a, (ix)
 	PUT_C_DO_BYTE()
 	djnz	-_
 PutCEvenFinalNibbles:
-	ld	a, (ix)
-	inc	ix
 	ld	a, (iy + PutCFinalNibbles)
 	or	a
-	jr	z, PutCEvenFinalBit
 	ld	b, a
+	jr	nz, +_
+	bit	PutC_OddWidth, (iy + PutCFlags)
+	jr	z, PutCEvenNoFinalBit
+	xor	a	; Set Z
+_:	ld	a, (ix)
+	inc	ix
+	jr	z, 	PutCEvenFinalBit
 _:	PUT_C_DO_BYTE()
 	djnz	-_
 PutCEvenFinalBit:
 	bit	PutC_OddWidth, (iy + PutCFlags)
-	jr	z, +_
+	jr	z, PutCEvenNoFinalBit
 	PUT_C_EVEN_NIBBLE()
-_:	ld	hl, (iy + PutC_RowAdvance)
+PutCEvenNoFinalBit:
+	ld	hl, (iy + PutC_RowAdvance)
 	add	hl, de
 	ex	de, hl
 	dec	(iy + PutC_GlyphHeight)
