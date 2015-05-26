@@ -98,13 +98,13 @@ _:	srl	d
 	rr	e
 	djnz	-_
 	or	a
-	ld	hl, (scrollTimer)
+	ld	hl, (generalTimer)
 	sbc	hl, de
-	ld	(scrollTimer), hl
+	ld	(generalTimer), hl
 	ret	nc
 	or	a
 	sbc	hl, hl
-	ld	(scrollTimer), hl
+	ld	(generalTimer), hl
 	ret
 
 

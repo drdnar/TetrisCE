@@ -37,21 +37,13 @@ _:	ld	de, (hl)
 	
 	; Save value from above
 	ld	(seed1), ix
-	call	GetRtcTimeLinear
+;	call	GetRtcTimeLinear
 	ld	(seed2), hl
 	
 	; Initialize short-mode routines
-	call	InitializeRandomRoutines
+;	call	InitializeRandomRoutines
 	
 	ld	(savedSp), sp
-	; Get pointer to Huffman decode tree
-	ld	hl, (itemsCount)
-	add	hl, hl
-	ld	de, objTblOffset
-	add	hl, de
-	ld	de, (dataFileLoc)
-	add	hl, de
-	ld	(huffmanTable), hl
 	
 	; Text driver
 	call	SetTextMode
@@ -64,12 +56,18 @@ _:	ld	de, (hl)
 	ld	(lcdRow), hl
 	ld	(lcdCol), hl
 	
-
 TitleScreen:
 	call	ClearScreen
+	
+	ld	a, 'X'
+	call	PutC
+	call	GetKey
+	
+	jp	Quit
+	
 	ld	hl, titleText
 	call	PutS
-	jp	RobotFindsKitten
+	jp	StartGame
 	
 	
 	

@@ -198,7 +198,7 @@ PutS:
 	jr	PutS
 putSNewLine:
 	push	hl
-	call	ClearEOL
+;	call	ClearEOL
 	ld	a, (lcdRow)
 	add	a, 14
 	cp	240 - 14
@@ -357,40 +357,6 @@ SetBackColor:
 	ret
 
 
-;------ PutSCentered -----------------------------------------------------------
-PutSCentered:
-; Displays a string, centering it.  However, if the string contains control
-; codes, the result will be weird.
-; Input:
-;  - HL: String to show
-;  - B: Line on which to show the string.
-; Output:
-;  - String shown
-;  - HL advanced to the byte after the null terminator.
-; Destroys:
-;  - AF
-;  - BC
-;  - DE
-;  - HL
-
-	push	hl
-	ex	de, hl
-	ld	l, b
-	ld	h, 0
-	call	Locate
-	call	GetStrWidth
-	ex	de, hl
-	srl	d
-	rr	e
-	ld	hl, 320 / 2
-	or	a
-	sbc	hl, de
-	ld	(lcdCol), hl
-	pop	hl
-	call	PutS
-	ret
-
-
 ;------ GetGlyphWidth ----------------------------------------------------------
 GetGlyphWidth:
 ; GetGlyphWidth
@@ -453,26 +419,19 @@ PutC:
 ;  - Nothing
 ; Vars
 PutC_Flags		.equ	0
-PutC_BytesPerLine	.equ	1
-PutC_FinalBits		.equ	2
-PutC_FontWidth		.equ	3
-PutC_FontHeight		.equ	4
-PutC_ColorsCache	.equ	5
-PutC_LocalsSize		.equ	9
+PutC_BytesPerLine	.equ	PutC_Flags + 1
+PutC_FinalNibbles	.equ	PutC_BytesPerLine + 1
+PutC_GlyphWidth		.equ	PutC_FinalNibbles + 1
+PutC_GlyphHeight	.equ	PutC_GlyphWidth + 1
+PutC_RowAdvance		.equ	PutC_GlyphHeight + 1
+PutC_ColorsCache	.equ	PutC_RowAdvance + 3
+PutC_LocalsSize		.equ	PutC_ColorsCache + 4
 ; Flags
 PutC_OddWidth		.equ	0
 PutC_OddStart		.equ	1
 ; Loop unrolling
 #macro PUT_C_DO_BYTE()
 	lea	hl, iy + PutC_ColorsCache	; One less memory access than LD HL, imm24; same as LD HL, imm16 in Z80 mode
-;	rlca
-;	jr	nc, $ + 3
-;	inc	hl
-;	rlca
-;	jr	nc, $ + 4
-;	inc	hl
-;	inc	hl
-;	ldi
 	rlca
 	jr	nc, $ + 4
 	inc	hl
@@ -530,116 +489,112 @@ PutC_OddStart		.equ	1
 	ld	iy, -PutC_LocalsSize
 	add	iy, sp
 	ld	sp, iy
-; Get font dimensions
-	ld	hl, (fontWidth)
-	ld	(iy + PutC_FontWidth), hl
-; VRAM nibble alignment flags
+	; Reset flags
 	ld	(iy + PutC_Flags), 0
-	bit	0, l
-	jr	z, $ + 6
-	set	PutC_OddWidth, (iy + PutC_Flags)
-; Compute loop control counters
-	ld	h, 0
-	srl	l	; If even width, we'll only do H number of full bytes
-	srl	l	; If odd width on odd start, we'll end with H full bytes
-	rr	h	; If odd width on even start, we'll end with H full bytes plus one nibble
-	srl	l	; So in every case, the low bit doesn't matter,
-	rl	h	; and we don't round up
-	rl	h
-	ld	(iy + PutC_BytesPerLine), l
-	ld	(iy + PutC_FinalBits), h
-; Write char to ASCII buffer
-	call	GetAsciiBufferCursorPtr
-	ld	(hl), a
-	inc	hl
-	ex	de, hl
-	ld	hl, textColors + 1
-	ldi
-; Get pointer to glyph data
-	ld	e, a
-	ld	d, (iy + PutC_FontWidth + 2)
-	mlt	de
-	ld	ix, (fontDataPtr)
+	; Get bitmap ptr
+	ld	l, a
+	ld	h, 3
+	mlt	hl
+	ld	de, (fontDataPtr)
+	add	hl, de
+	ld	ix, (hl)
 	add	ix, de
-; Cache colors to stack, because LEA HL, IY + simm8 is 1 bus op less than LD HL, imm24
+	; Get glyph width
+	or	a
+	sbc	hl, hl
+	ld	l, a
+	ld	de, (fontWidthsPtr)
+	add	hl, de
+	ld	a, (hl)
+	ld	(iy + PutC_GlyphWidth), a
+	; Row width offset
+	sbc	hl, hl
+	ld	l, a
+	rr	l
+	jr	z, +_
+	set	PutC_OddWidth, (iy + PutC_Flags)
+_:	ex	de, hl
+	ld	hl, 320 / 2
+	or	a
+	sbc	hl, de
+	ld	(iy + PutC_RowAdvance), hl
+	; Loop control
+	rrca
+	ld	b, a
+	and	3
+	ld	(iy + PutC_FinalNibbles), a
+	ld	a, b
+	rrca
+	rrca
+	and	1Fh
+	ld	(iy + PutC_BytesPerLine), a
+	
+	; ???
+	
+	; Font height
+	ld	a, (fontHeight)
+	ld	(iy + PutC_GlyphHeight), a
+	; Cache colors to stack, because LEA HL, IY + simm8 is 1 bus op less than LD HL, imm24
 	ld	bc, 4
 	lea	de, iy + PutC_ColorsCache
 	ld	hl, textColors
 	ldir
-; VRAM ptr
-	ld	hl, (currentRow)
-	ld	d, h
-	ld	h, (iy + PutC_FontHeight)
-	mlt	hl
-	ld	h, 160
-	mlt	hl
-	ld	e, (iy + PutC_FontWidth)
-	mlt	de
-	srl	d
-	rr	e
-	jr	nc, PutCEvenStart
+	; VRAM ptr
+	ld	hl, (lcdCol)
+	srl	h
+	rr	l
+	jr	z, +_
 	set	PutC_OddStart, (iy + PutC_Flags)
-PutCEvenStart:
+_:	ld	a, (lcdRow)
+	ld	e, a
+	ld	d, 320 / 2
+	mlt	de
 	add	hl, de
 	ld	de, (mpLcdBase)
 	add	hl, de
 	ex	de, hl
-	ld	c, 255	; Prevent DLI from decrementing B
-; Starting on a half-byte is weird. Use an entirely different code path.
-	bit	PutC_OddStart, (iy + PutC_Flags)
-	jp	nz, PutCOddLoopStart
 	
+	bit	PutC_OddStart, (iy + PutC_Flags)
+	jp	nz, PutCOddStart
 PutCEvenLoop:
+	ld	c, 255
 	ld	a, (iy + PutC_BytesPerLine)
 	or	a
-;	push	de
-	jr	z, PutCEvenFinalBytes
+	jr	z, PutCEvenFinalNibbles
 	ld	b, a
-PutCEvenBodyLoop:
-	ld	a, (ix)
+_:	ld	a, (ix)
 	inc	ix
 	PUT_C_DO_BYTE()
 	PUT_C_DO_BYTE()
 	PUT_C_DO_BYTE()
 	PUT_C_DO_BYTE()
-	djnz	PutCEvenBodyLoop
-PutCEvenFinalBytes:
-	ld	a, (iy + PutC_FinalBits)
-	or	a
-	jr	nz, PutCEvenHaveFinalBytes
-	bit	PutC_OddWidth, (iy + PutC_Flags)
-	jr	z, PutCEvenNoFinalBit
-	or	a
-PutCEvenHaveFinalBytes:
-	ld	b, a
+	djnz	-_
+PutCEvenFinalNibbles:
 	ld	a, (ix)
 	inc	ix
+	ld	a, (iy + PutC_FinalNibbles)
+	or	a
 	jr	z, PutCEvenFinalBit
-PutCEvenFinalBytesLoop:
-	PUT_C_DO_BYTE()
-	djnz	PutCEvenFinalBytesLoop	
-	bit	PutC_OddWidth, (iy + PutC_Flags)
-	jr	z, PutCEvenNoFinalBit
+	ld	b, a
+_:	PUT_C_DO_BYTE()
+	djnz	-_
 PutCEvenFinalBit:
+	bit	PutC_OddWidth, (iy + PutC_Flags)
+	jr	z, +_
 	PUT_C_EVEN_NIBBLE()
-	inc	de
-PutCEvenNoFinalBit:
-;	pop	de
-;	ld	hl, 160
-	ld	hl, (fontLineSize)
+_:	ld	hl, (iy + PutC_RowAdvance)
 	add	hl, de
 	ex	de, hl
-	dec	(iy + PutC_FontHeight)
+	dec	(iy + PutC_GlyphHeight)
 	jp	nz, PutCEvenLoop
 	jp	PutCDone
-
-PutCOddLoopStart:
+	
+PutCOddStart:
+PutCOddLoop:
 	ld	a, (iy + PutC_BytesPerLine)
 	or	a
-	jp	z, PutCSpecialOddLoop
-PutCOddLoop:
-	ld	b, (iy + PutC_BytesPerLine)
-;	push	de
+	jr	z, PutCOddFinalNibbles
+	ld	b, a
 PutCOddBodyLoop:
 	ld	a, (ix)
 	inc	ix
@@ -649,44 +604,59 @@ PutCOddBodyLoop:
 	PUT_C_DO_BYTE()
 	PUT_C_EVEN_NIBBLE()
 	djnz	PutCOddBodyLoop
-	ld	a, (ix)
-	inc	ix
-	PUT_C_ODD_NIBBLE()	; Because this code path requires an odd number of bits. . . .
-	ld	a, (iy + PutC_FinalBits)
+	ld	a, (iy + PutC_FinalNibbles)
 	or	a
-	jr	z, PutCOddNoFinalBytes
-	ld	b, a
-PutCOddFinalBytes:
-	PUT_C_DO_BYTE()
-	djnz	PutCOddFinalBytes
-PutCOddNoFinalBytes:
-;	pop	de
-;	ld	hl, 160
-	ld	hl, (fontLineSize)
-	add	hl, de
-	ex	de, hl
-	dec	(iy + PutC_FontHeight)
-	jp	nz, PutCOddLoop
-	jr	PutCDone
-
-PutCSpecialOddLoop: ; This only covers width = 7
-	ld	a, (ix)
+	jr	nz, +_
+	bit	PutC_OddWidth, (iy + PutC_Flags)
+	jr	z, PutCOddNoFinalBit
+	xor	a
+_:	ld	a, (ix)
 	inc	ix
+	jr	z, PutCOddFinalBit
+	ld	b, a
+PutCOddFinalNibbles:
 	PUT_C_ODD_NIBBLE()
-	PUT_C_DO_BYTE()
-	PUT_C_DO_BYTE()
-	PUT_C_DO_BYTE()
-	ld	hl, 160 - 4
+	PUT_C_EVEN_NIBBLE()
+	djnz	PutCOddFinalNibbles
+	bit	PutC_OddWidth, (iy + PutC_Flags)
+	jr	z, PutCOddNoFinalBit
+PutCOddFinalBit:
+	PUT_C_EVEN_NIBBLE()
+PutCOddNoFinalBit:
+	ld	hl, (iy + PutC_RowAdvance)
 	add	hl, de
 	ex	de, hl
-	dec	(iy + PutC_FontHeight)
-	jr	nz, PutCSpecialOddLoop
-;	jr	PutCDone
+	dec	(iy + PutC_GlyphHeight)
+	jp	nz, PutCOddLoop
 
 PutCDone:
 ; Update cursor
-	call	AdvanceCursor
+	ld	de, (lcdCol)
+	or	a
+	sbc	hl, hl
+	ld	a, (iy + PutC_GlyphWidth)
+	ld	l, a
+	add	hl, de
+	ld	de, 320
+	sbc	hl, de
+	add	hl, de
+	jr	c, +_
+	sbc	hl, hl
+	ld	a, (fontHeight)
+	ld	b, a
+	ld	a, (lcdRow)
+	add	a, b
+	ld	(lcdRow), a
+	add	a, b
+	cp	240
+	jr	c, +_
+	xor	a
+	ld	(lcdRow), a
+_:	ld	(lcdCol), hl
 ; Close stack frame
+
+asdfasdfasdfasdfasdfasdfasdfasd:
+
 	ld	iy, PutC_LocalsSize
 	add	iy, sp
 	ld	sp, iy
@@ -698,3 +668,4 @@ PutCDone:
 	pop	af
 ; End of function
 	ret
+
