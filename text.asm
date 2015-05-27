@@ -570,19 +570,25 @@ _:	ld	a, (ix)
 	PUT_C_DO_BYTE()
 	djnz	-_
 PutCEvenFinalNibbles:
-	ld	a, (ix)
-	inc	ix
 	ld	a, (iy + PutC_FinalNibbles)
 	or	a
-	jr	z, PutCEvenFinalBit
 	ld	b, a
+	jr	nz, +_
+	bit	PutC_OddWidth, (iy + PutC_Flags)
+	jr	z, PutCEvenNoFinalBit
+	xor	a
+_:	ld	a, (ix)
+	inc	ix
+	jr	z, PutCEvenFinalBit
+	ld	c, 255
 _:	PUT_C_DO_BYTE()
 	djnz	-_
 PutCEvenFinalBit:
 	bit	PutC_OddWidth, (iy + PutC_Flags)
-	jr	z, +_
+	jr	z, PutCEvenNoFinalBit
 	PUT_C_EVEN_NIBBLE()
-_:	ld	hl, (iy + PutC_RowAdvance)
+PutCEvenNoFinalBit:
+	ld	hl, (iy + PutC_RowAdvance)
 	add	hl, de
 	ex	de, hl
 	dec	(iy + PutC_GlyphHeight)
@@ -590,6 +596,8 @@ _:	ld	hl, (iy + PutC_RowAdvance)
 	jp	PutCDone
 	
 PutCOddStart:
+	jp	PutCDone
+
 PutCOddLoop:
 	ld	a, (iy + PutC_BytesPerLine)
 	or	a
@@ -610,10 +618,12 @@ PutCOddBodyLoop:
 	bit	PutC_OddWidth, (iy + PutC_Flags)
 	jr	z, PutCOddNoFinalBit
 	xor	a
-_:	ld	a, (ix)
+_:	ld	c, (ix)
 	inc	ix
 	jr	z, PutCOddFinalBit
 	ld	b, a
+	ld	a, c
+	ld	c, 255
 PutCOddFinalNibbles:
 	PUT_C_ODD_NIBBLE()
 	PUT_C_EVEN_NIBBLE()
@@ -654,9 +664,6 @@ PutCDone:
 	ld	(lcdRow), a
 _:	ld	(lcdCol), hl
 ; Close stack frame
-
-asdfasdfasdfasdfasdfasdfasdfasd:
-
 	ld	iy, PutC_LocalsSize
 	add	iy, sp
 	ld	sp, iy
