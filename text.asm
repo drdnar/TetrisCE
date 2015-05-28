@@ -185,13 +185,13 @@ PutS:
 	ld	l, a
 	ld	de, (lcdCol)
 	add	hl, de	; C is reset
-	ld	de, 320 - 5
+	ld	de, 320 - 1
 	sbc	hl, de
 	pop	de
 	pop	hl
-	ret	nc
-	
 	dec	hl
+	jr	nc, putSNewLine
+	
 	ld	a, (hl)
 	inc	hl
 	call	PutC

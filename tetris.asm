@@ -58,13 +58,11 @@ _:	ld	de, (hl)
 	
 TitleScreen:
 	call	ClearScreen
-	
-	
-	
 	ld	hl, titleText
 	call	PutS
-	
 	call	GetKey
+	cp	skClear
+	jr	nz, TitleScreen
 	
 	jp	StartGame
 	
