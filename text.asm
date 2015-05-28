@@ -456,9 +456,8 @@ PutC_OddStart		.equ	1
 	or	(hl)
 	ld	(hl), a
 	ex	de, hl
-	inc	de
+;	inc	de
 	ld	a, c
-	ld	c, 255
 #endmacro
 #macro	PUT_C_EVEN_NIBBLE()
 	lea	hl, iy + PutC_ColorsCache + 1
@@ -477,7 +476,6 @@ PutC_OddStart		.equ	1
 	ex	de, hl
 ;	inc	de	; Do not increment
 	ld	a, c
-	ld	c, 255
 #endmacro
 ; Open stack frame
 	push	af
@@ -511,7 +509,7 @@ PutC_OddStart		.equ	1
 	sbc	hl, hl
 	ld	l, a
 	rr	l
-	jr	z, +_
+	jr	nc, +_
 	set	PutC_OddWidth, (iy + PutC_Flags)
 _:	ex	de, hl
 	ld	hl, 320 / 2
@@ -543,7 +541,7 @@ _:	ex	de, hl
 	ld	hl, (lcdCol)
 	srl	h
 	rr	l
-	jr	z, +_
+	jr	nc, +_
 	set	PutC_OddStart, (iy + PutC_Flags)
 _:	ld	a, (lcdRow)
 	ld	e, a
@@ -580,12 +578,11 @@ PutCEvenFinalNibbles:
 _:	ld	a, (ix)
 	inc	ix
 	jr	z, PutCEvenFinalBit
-	ld	c, 255
 _:	PUT_C_DO_BYTE()
 	djnz	-_
-PutCEvenFinalBit:
 	bit	PutC_OddWidth, (iy + PutC_Flags)
 	jr	z, PutCEvenNoFinalBit
+PutCEvenFinalBit:
 	PUT_C_EVEN_NIBBLE()
 PutCEvenNoFinalBit:
 	ld	hl, (iy + PutC_RowAdvance)
@@ -596,8 +593,6 @@ PutCEvenNoFinalBit:
 	jp	PutCDone
 	
 PutCOddStart:
-	jp	PutCDone
-
 PutCOddLoop:
 	ld	a, (iy + PutC_BytesPerLine)
 	or	a
@@ -607,31 +602,32 @@ PutCOddBodyLoop:
 	ld	a, (ix)
 	inc	ix
 	PUT_C_ODD_NIBBLE()
+	inc	de
+	ld	c, 255
 	PUT_C_DO_BYTE()
 	PUT_C_DO_BYTE()
 	PUT_C_DO_BYTE()
 	PUT_C_EVEN_NIBBLE()
 	djnz	PutCOddBodyLoop
+PutCOddFinalNibbles:
 	ld	a, (iy + PutC_FinalNibbles)
 	or	a
+	ld	b, a
 	jr	nz, +_
 	bit	PutC_OddWidth, (iy + PutC_Flags)
 	jr	z, PutCOddNoFinalBit
 	xor	a
-_:	ld	c, (ix)
+_:	ld	a, (ix)
 	inc	ix
 	jr	z, PutCOddFinalBit
-	ld	b, a
-	ld	a, c
-	ld	c, 255
-PutCOddFinalNibbles:
-	PUT_C_ODD_NIBBLE()
+_:	PUT_C_ODD_NIBBLE()
+	inc	de
 	PUT_C_EVEN_NIBBLE()
-	djnz	PutCOddFinalNibbles
+	djnz	-_
 	bit	PutC_OddWidth, (iy + PutC_Flags)
 	jr	z, PutCOddNoFinalBit
 PutCOddFinalBit:
-	PUT_C_EVEN_NIBBLE()
+	PUT_C_ODD_NIBBLE()
 PutCOddNoFinalBit:
 	ld	hl, (iy + PutC_RowAdvance)
 	add	hl, de

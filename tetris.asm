@@ -59,16 +59,16 @@ _:	ld	de, (hl)
 TitleScreen:
 	call	ClearScreen
 	
-	ld	a, 'X'
-	call	PutC
-	call	GetKey
 	
-	jp	Quit
 	
 	ld	hl, titleText
 	call	PutS
+	
+	call	GetKey
+	
 	jp	StartGame
 	
+	jp	Quit
 	
 	
 Panic:
