@@ -71,9 +71,16 @@ TitleScreen:
 	
 	
 	
-Quit:
-	
 Panic:
+	ld	iy, flags
+	ld	sp, (savedSp)
+	push	hl
+	call	FixLcdMode
+	pop	hl
+	call	_PutS
+	call	GetKey
+	
+Quit:
 	
 	ld	iy, flags
 	ld	sp, (savedSp)

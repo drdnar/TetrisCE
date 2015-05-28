@@ -24,7 +24,7 @@ savedSp		.equ	vars
 textColors	.equ	savedSp + 3
 textForeColor	.equ	textColors
 textBackColor	.equ	foreColor + 1
-lcdRow		.equ	textColors + 3
+lcdRow		.equ	textColors + 4
 lcdCol		.equ	lcdRow + 1
 fontHeight	.equ	lcdCol + 3
 fontWidthsPtr	.equ	fontHeight + 1
