@@ -57,6 +57,25 @@ _:	ld	de, (hl)
 	ld	(lcdCol), hl
 	
 TitleScreen:
+	di
+;	call	ConfigureKeyboard
+	ld	hl, blarghsasdf
+	call	PutS
+_:	ld	a, (0F00020h)
+	and	1
+	jp	nz, Quit
+	call	KbdRawScan
+	or	a
+	jr	z, -_
+	call	DispByte
+	jr	-_
+	
+	jp	Quit
+blarghsasdf:
+	.db	"Thingy: ", 0
+	
+	
+	
 	ld	hl, 0F50000h
 	call	asdfasjdl
 	call	NewLine
@@ -66,8 +85,24 @@ TitleScreen:
 	call	NewLine
 	call	asdfasjdl
 	call	NewLine
+	call	NewLine
 	call	asdfasjdl
 	call	NewLine
+	call	asdfasjdl
+	call	NewLine
+	call	asdfasjdl
+	call	NewLine
+	call	asdfasjdl
+	call	NewLine
+	call	asdfasjdl
+	call	NewLine
+	call	asdfasjdl
+	call	NewLine
+	call	asdfasjdl
+	call	NewLine
+	call	asdfasjdl
+	call	NewLine
+	
 	
 	call	GetKey
 	
@@ -102,7 +137,7 @@ _:	push	hl
 	call	PutS
 	call	GetKey
 	cp	skClear
-	jr	nz, TitleScreen
+	jp	nz, TitleScreen
 	
 	jp	StartGame
 	
@@ -123,9 +158,11 @@ Quit:
 	ld	iy, flags
 	ld	sp, (savedSp)
 	call	FixLcdMode
+	call	ResetKeyboard
 	call	_DrawStatusBar
 	call	_DrawStatusBarInfo
 	call	_ClrScrnFull
+	ei
 	ret
 
 

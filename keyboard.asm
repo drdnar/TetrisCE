@@ -26,13 +26,28 @@ ResetKeyboard:
 	ld	bc, 13
 	ldir
 	ret
-_:	.dw	kbdIdle | 0F00h, 0F00h
+_:	.dw	kbdIntOnly | 0F00h, 0F00h
+	.db	8
+	.db	8
+	.dw	0FFFFh
+	.dw	0FFh, 0
+	.db	kbdIntKeyPressed
+
+
+;------ ConfigureKeyboard ------------------------------------------------------
+ConfigureKeyboard:
+;
+	ld	hl, +_
+	ld	de, mpKbdScanMode
+	ld	bc, 13
+	ldir
+	ret
+_:	.dw	kbdContinuousScan | 0F00h, 0F00h
 	.db	8
 	.db	8
 	.dw	0
 	.dw	0FFh, 0
-	.db	kbdIntScanDone
-	
+	.db	0
 
 
 ;------ KbdRawScan -------------------------------------------------------------
