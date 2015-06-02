@@ -159,6 +159,50 @@ mpRtcDays		EQU (mpRtcRange + 12)
 
 pKbdRange               EQU 0A000h
 mpKbdRange              EQU 0F50000h
+
+pKbdScanMode	.equ	0A000h
+mpKbdScanMode	.equ	0F50000h
+kbdIdle	.equ	0
+kbdIntOnly	.equ	1
+kbdSingleScan	.equ	2
+kbdContinuousScan	.equ	3
+pKbdRowDelay	.equ	0A001h
+mpKbdRowDelay	.equ	0F50001h
+pKbdScanInterval	.equ	0A002h
+mpKbdScanInterval	.equ	0F50002h
+pKbdRows	.equ	0A004h
+mpKbdRows	.equ	0F50004h
+pKbdColumns	.equ	0A005h
+mpKbdColumns	.equ	0F50005h
+pKbdInterruptStatus	.equ	0A008h
+mpKbdInterruptStatus	.equ	0F50008h
+kbdIntScanDone	.equ	1
+kbdIntScanDoneB	.equ	0
+kbdIntDataChanged	.equ	2
+kbdIntDataChangedB	.equ	1
+kbdIntKeyPressed	.equ	4
+kbdIntKeyPressedB	.equ	2
+pKbdInterruptMask	.equ	0A00Ch
+mpKbdInterruptMask	.equ	0F5000Ch
+pKbdRowData	.equ	0A010h
+mpKbdRowData	.equ	0F50010h
+
+pKbdRow1	.equ	0A012h
+mpKbdRow1	.equ	0F50012h
+pKbdRow2	.equ	0A014h
+mpKbdRow2	.equ	0F50014h
+pKbdRow3	.equ	0A016h
+mpKbdRow3	.equ	0F50016h
+pKbdRow4	.equ	0A018h
+mpKbdRow4	.equ	0F50018h
+pKbdRow5	.equ	0A01Ah
+mpKbdRow5	.equ	0F5001Ah
+pKbdRow6	.equ	0A01Ch
+mpKbdRow6	.equ	0F5001Ch
+pKbdRow7	.equ	0A01Eh
+mpKbdRow7	.equ	0F5001Eh
+
+
 pBlLevel                EQU 0B024h
 mpBlLevel               EQU 0F60024h
 

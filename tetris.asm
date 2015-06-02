@@ -57,6 +57,45 @@ _:	ld	de, (hl)
 	ld	(lcdCol), hl
 	
 TitleScreen:
+	ld	hl, 0F50000h
+	call	asdfasjdl
+	call	NewLine
+	call	asdfasjdl
+	call	NewLine
+	call	asdfasjdl
+	call	NewLine
+	call	asdfasjdl
+	call	NewLine
+	call	asdfasjdl
+	call	NewLine
+	
+	call	GetKey
+	
+	jp	Quit
+
+	
+asdfasjdl:	
+	ld	b, 4
+_:	push	hl
+	push	bc
+	ld	a, (hl)
+	call	DispByte
+	ld	a, ' '
+	call	PutC
+	pop	bc
+	pop	hl
+	djnz	-_
+	ret
+
+
+	di
+	ld	hl, (0F50012h)
+	
+	
+	
+
+	ei
+
 	call	ClearScreen
 	ld	hl, titleText
 	call	PutS
@@ -94,4 +133,5 @@ Quit:
 #include "text.asm"
 #include "routines.asm"
 #include "data.asm"
+#include "keyboard.asm"
 #include "font.asm"
