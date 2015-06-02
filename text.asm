@@ -140,7 +140,7 @@ NewLine:
 ; Destroys:
 ;  - AF
 ;  - B
-;  - HL
+	push	hl
 	or	a
 	sbc	hl, hl
 	ld	(lcdCol), hl
@@ -152,6 +152,7 @@ NewLine:
 	ld	(lcdRow), a
 	add	a, b
 	cp	240
+	pop	hl
 	ret	c
 	; Glyph will extend past bottom of screen, so force wrap
 	xor	a

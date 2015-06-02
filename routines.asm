@@ -387,8 +387,8 @@ _dba:	or	0F0h
 	daa
 	add	a, 0A0h
 	adc	a, 40h
-;	call	PutC
-	call	_PutC
+	call	PutC
+;	call	_PutC
 	ret
 
 

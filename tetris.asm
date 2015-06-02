@@ -74,7 +74,7 @@ TitleScreen:
 	jp	Quit
 
 	
-asdfasjdl:	
+asdfasjdl:
 	ld	b, 4
 _:	push	hl
 	push	bc
@@ -84,6 +84,7 @@ _:	push	hl
 	call	PutC
 	pop	bc
 	pop	hl
+	inc	hl
 	djnz	-_
 	ret
 

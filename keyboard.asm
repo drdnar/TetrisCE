@@ -1,5 +1,15 @@
-; To do. . . .
-;  - Low-level KBD scan
+; Key held?
+; 00 0F 00 0F
+; 08 08 FF FF
+; 01 00 00 00
+; 01 00 00 00
+; 00 00 00 00
+; No key:
+; 01 0F 00 0F
+; 08 08 FF FF
+; 00 00 00 00
+; 04 00 00 00
+; 00 00 00 00
 
 
 ;------ ResetKeyboard ----------------------------------------------------------
@@ -16,14 +26,12 @@ ResetKeyboard:
 	ld	bc, 13
 	ldir
 	ret
-_:	.db	kbdIdle
-	.db	15
-	.dw	15
+_:	.dw	kbdIdle | 0F00h, 0F00h
 	.db	8
 	.db	8
 	.dw	0
 	.dw	0FFh, 0
-	.db	kbdIntKeyPressed
+	.db	kbdIntScanDone
 	
 
 
@@ -36,40 +44,57 @@ KbdRawScan:
 ; Output:
 ;  - Code in A, or 0 if none
 ; Destroys:
-;  - HL
+;  - BC
 	ld	bc, mpKbdRow1 | 0700h
-	
-	
-	
-	
-	ld	bc, 07BFh
-_gcsca:	; Matrix scan loop
-	ld	a, c
-;	out	(pKey), a
-	rrca
-	ld	c, a
-	pop	af	; Probably should waste at least 20 cycles here.
-	push	af	
-;	push	ix
-;	pop	ix
-;	in	a, (pKey)
-	cp	0ffh
-	jr	nz, _gcscb	; Any key pressed?
-	djnz	_gcsca
-	; No keys pressed in any key group, so return 0.
-	xor	a
+_:	ld	a, (bc)
+	or	a
+	jr	nz, +_
+	inc	c
+	inc	c
+	djnz	-_
 	ret
-_gcscb:	; Yay! Found a key, now form a scan code
-	dec	b
+_:	dec	b
 	sla	b
 	sla	b
 	sla	b
 	; Get which bit in A is reset
-_gcscc:	rrca
+_:	rrca
 	inc	b
-	jr	c, _gcscc
+	jr	nc, -_
 	ld	a, b
 	ret
+
+#IFDEF	DIAGONAL_ARROWS
+	ld	bc, mpKbdRow1 | 0600h
+_:	ld	a, (bc)
+	or	a
+	jr	nz, +_
+	inc	c
+	inc	c
+	djnz	-_
+	ld	a, (bc)
+	or	a
+	ret	z
+	cp	1
+	jr	z, +_
+	cp	2
+	jr	z, +_
+	cp	4
+	jr	z, +_
+	cp	8
+	jr	z, +_
+	or	0F0h
+	ret
+_:	sla	b
+	sla	b
+	sla	b
+	; Get which bit in A is reset
+_:	rrca
+	inc	b
+	jr	nc, -_
+	ld	a, b
+	ret
+#ENDIF
 
 
 ;------ ------------------------------------------------------------------------
