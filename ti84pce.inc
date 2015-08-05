@@ -20,6 +20,8 @@
 #define L_BYTE(x) (x)
 #define H_BYTE(x) ((x >> 8) & 255)
 #define U_BYTE(x) ((x >> 16) & 255)
+#define MASK_TO_BYTE(x) ((x & 255) | ((x >> 8) & 255) | ((x >> 16) & 255))
+#define BIT_TO_OFFSET(x) (x >> 3)
 
 lcdWidth        EQU      320
 lcdHeight       EQU      240

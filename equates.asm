@@ -40,5 +40,14 @@ seed2Short	.equ	(seed2 & 0FFFFh)
 generalTimer	.equ	seed2 + 3
 ;end_of_game_vars	.equ	OP7 + 9
 
-ivtLocation	.equ	(pixelShadow2 + 8400 - 258) & 0FFFF00h
-isrLocation	.equ	0D4D4D4h
+; 25800h Size of VRAM
+; 12C00  Half-size of VRAM
+; D40000 START OF VRAM
+; D52C00 Middle of VRAM
+; D65800 END OF VRAM	
+; D5D5D5 ISR
+; So let's put the IVT at D5D600, 258 bytes
+;ivtLocation	.equ	(pixelShadow2 + 8400 - 258) & 0FFFF00h
+ivtLocation	.equ	0D5D600h
+isrLocation	.equ	0D5D5D5h
+

@@ -1,3 +1,13 @@
+; TODO:
+;  - Verify keyboard driver
+;  - Test IM2 with:
+;     - ON key
+;     - OS timer
+;     - KBD
+; Keyboard configuration
+;  - Continuous rescan
+;  - Interrupt after every scan
+
 .assume ADL=1
 #include "ti84pce.inc"
 #include "equates.asm"
@@ -5,74 +15,10 @@
 	.org	userMem - 2
 	.db	tExtTok, tAsm84CeCmp
 
-	00 80 00 00
-19 30 00 00
-00 00 00 00
-19 00 08 00
 
-
-now it's
-00 80 00 00
-19 30 00 00
-00 00 00 00
-19 00 00 00
-
-00 00 00 00
-18 00 00 00
-
-
-
-Anyway. . . .
-USB not-plugged:
-00 80 08 00
-11 30 00 00
-00 00 00 00
-19 00 00 00
-
-00 00 00 00
-10 00 00 00
-
-
-	ld	hl, (0F00005)
-	res	5, (hl)
-	ret
-
-Crypto
-Inter-chip bus
-Watchdog timer
-USB
-USB DMA?
-
-
-Bit   	Interrupt Source   
-0 1	ON Button
-1 2	Timer 1
-2 4	Timer 2
-3 8	Timer 3
-4 10	Unknown, but disabling causes freeze (might be OS timer?)
-5 20	
-6 40	
-7 80	
-8 100	
-9 200	
-10 400	Keyboard
-11 800	LCD Controller
-12 1000	Real-Time Clock
-13 2000	???
-14 4000	
-15 8000	Unknown, but signal seems to be constantly on
-16 1 0000
-17 2 0000
-18 4 0000
-19 8 0000	???
-20 10 0000
-21 20 0000
-
-
-	
-	ld	hl, (0F00005h)
-	res	5, (hl)
-	ret
+;	ld	hl, 0F00005h
+;	res	5, (hl)
+;	ret
 
 	
 	
@@ -116,7 +62,8 @@ _:	ld	de, (hl)
 	
 	ld	(savedSp), sp
 	
-	di
+	di	
+	
 	
 	; Timers
 	
@@ -135,6 +82,45 @@ _:	ld	de, (hl)
 	ld	hl, 0
 	ld	(lcdRow), hl
 	ld	(lcdCol), hl
+
+
+
+	ld	hl, readystr
+	call	PutS
+	
+	call	InitializeInterrupts
+
+	ei
+	
+	
+_:	ld	hl, (lcdRow)
+	push	hl
+	ld	hl, (lcdCol)
+	push	hl
+	
+	ld	hl, (generalTimer)
+	call	DispUhl
+	
+	ld	a, '#'
+	call	PutC
+	
+	ld	hl, (mpIntStatusMasked)
+	call	DispUhl
+	
+	pop	hl
+	ld	(lcdCol), hl
+	pop	hl
+	ld	(lcdRow), hl
+	
+	call	KbdRawScan
+	or	a
+	jr	z, -_
+	
+
+	jp	Quit
+readystr:
+	.db	"READY. . . . ", 0
+
 	
 TitleScreen:
 	ld	hl, 0F00000h
@@ -218,15 +204,20 @@ Panic:
 	call	GetKey
 	
 Quit:
-	
+	di
+	im	1
 	ld	iy, flags
 	ld	sp, (savedSp)
+	call	ResetInterrupts
 	call	FixLcdMode
 	call	ResetKeyboard
 	call	_DrawStatusBar
 	call	_DrawStatusBarInfo
 	call	_ClrScrnFull
-	ei
+	ld	b, 8
+_:	ei
+	halt
+	djnz	-_
 	ret
 
 

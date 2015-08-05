@@ -42,12 +42,12 @@ ConfigureKeyboard:
 	ld	bc, 13
 	ldir
 	ret
-_:	.dw	kbdContinuousScan | 0F00h, 0F00h
-	.db	8
-	.db	8
-	.dw	0
-	.dw	0FFh, 0
-	.db	0
+_:	.dw	kbdContinuousScan | 0F00h, 0F00h	; Scan mode
+	.db	8	; Rows
+	.db	8	; Columns
+	.dw	0	; unused
+	.dw	0FFh, 0	; Int status/ACK
+	.db	0	; Int enable
 
 
 ;------ KbdRawScan -------------------------------------------------------------
