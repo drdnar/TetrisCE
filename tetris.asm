@@ -1,12 +1,5 @@
 ; TODO:
-;  - Verify keyboard driver
-;  - Test IM2 with:
-;     - ON key
-;     - OS timer
-;     - KBD
-; Keyboard configuration
-;  - Continuous rescan
-;  - Interrupt after every scan
+;  - Figure out if interrupt vector is random or not.
 
 .assume ADL=1
 #include "ti84pce.inc"
@@ -84,6 +77,7 @@ _:	ld	de, (hl)
 	ld	(lcdCol), hl
 
 
+	call	ClrScrnFull
 
 	ld	hl, readystr
 	call	PutS
@@ -93,7 +87,8 @@ _:	ld	de, (hl)
 	ei
 	
 	
-_:	ld	hl, (lcdRow)
+loop:	
+	ld	hl, (lcdRow)
 	push	hl
 	ld	hl, (lcdCol)
 	push	hl
@@ -104,17 +99,37 @@ _:	ld	hl, (lcdRow)
 	ld	a, '#'
 	call	PutC
 	
+	ld	a, (mpKbdScanMode)
+	call	DispByte
+	ld	a, (mpKbdInterruptStatus)
+	call	DispByte
+	ld	a, '#'
+	call	PutC
+	
+	
 	ld	hl, (mpIntStatusMasked)
 	call	DispUhl
+;	call	GetCSC
+	ld	a, (kbdLastKey)
+	or	a
+	jr	z, +_
+	push	af
+	ld	a, ','
+	call	PutC
+	pop	af
+	call	DispByte
+_:	ld	a, '#'
+	call	PutC
 	
 	pop	hl
 	ld	(lcdCol), hl
 	pop	hl
 	ld	(lcdRow), hl
 	
-	call	KbdRawScan
-	or	a
-	jr	z, -_
+	jr	loop
+;	call	KbdRawScan
+;	or	a
+;	jr	z, loop
 	
 
 	jp	Quit

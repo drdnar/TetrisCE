@@ -20,8 +20,12 @@ shortModeCode	.equ	pixelShadow2
 vars		.equ	pixelShadow2 + 1024
 
 savedSp		.equ	vars
+; Keyboard
+keyBuffer	.equ	savedSp + 3
+kbdLastKey	.equ	keyBuffer + 1
+kbdInhibitTimer	.equ	kbdLastKey + 1
 ; Text
-textColors	.equ	savedSp + 3
+textColors	.equ	kbdInhibitTimer + 1
 textForeColor	.equ	textColors
 textBackColor	.equ	foreColor + 1
 lcdRow		.equ	textColors + 4

@@ -63,13 +63,13 @@ InitializeInterrupts:
 	ret
 interruptConfiguration:
 	; Mask
-	.dl	intOnKey | intTimer1 | intOsTimer | intKbd
+	.dl	intOnKey | intTimer1 | intOsTimer; | intKbd
 	.db	0
 	; ACK any outstanding interrupts
 	.dl	0FFFFFFh
 	.db	0
 	; Latch
-	.dl	intOnKey | intTimer1 | intOsTimer | intKbd
+	.dl	intOnKey | intTimer1 | intOsTimer; | intKbd
 	.db	0
 	; Invert
 	.dl	0
@@ -111,7 +111,7 @@ InterruptHandler:
 	add	a, a	; Bit 11 (LCD)
 	jr	c, handleLcd
 	add	a, a	; Bit 10 (keyboard)
-	jr	c, handleKeyboard
+	jr	c, unknownInt;handleKeyboard
 	add	a, a	; Bit 9
 	jr	c, unknownInt
 	add	a, a	; Bit 8
@@ -123,9 +123,18 @@ handleLcd:
 handleOsTimer:
 	ld	a, MASK_TO_BYTE(intOsTimer)
 	ld	(mpIntAck + BIT_TO_OFFSET(intOsTimerB)), a
+	
 	ld	hl, (generalTimer)
 	inc	hl
 	ld	(generalTimer), hl
+	
+	push	bc
+;	push	de
+	call	KbdScanEvent
+;	pop	de
+	pop	bc
+	call	KbdStartScan
+	
 exitInterrupt:
 	pop	hl
 	pop	af
@@ -133,10 +142,18 @@ exitInterrupt:
 	ret
 
 
-handleKeyboard:
-	ld	a, MASK_TO_BYTE(intKbd)
-	ld	(mpIntAck + BIT_TO_OFFSET(intKbdB)), a
-	jr	exitInterrupt
+;handleKeyboard:
+;	ld	hl, (generalTimer)
+;	inc	hl
+;	ld	(generalTimer), hl
+;	push	bc
+;	push	de
+;	call	KbdScanEvent
+;	pop	de
+;	pop	bc
+;	ld	a, MASK_TO_BYTE(intKbd)
+;	ld	(mpIntAck + BIT_TO_OFFSET(intKbdB)), a
+;	jr	exitInterrupt
 
 
 handleTimer1:

@@ -1,9 +1,9 @@
 ;------ GetKey -----------------------------------------------------------------
-GetKey:
-	call	_GetCSC
-	or	a
-	ret	nz
-	jr	GetKey
+;GetKey:
+;	call	_GetCSC
+;	or	a
+;	ret	nz
+;	jr	GetKey
 
 
 ;------ ClearMem ---------------------------------------------------------------

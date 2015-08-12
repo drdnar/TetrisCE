@@ -123,7 +123,7 @@ ClearScreen:
 	add	hl, de
 	inc	de
 	ld	(hl), 0
-	ld	bc, 320 * 240 - 1
+	ld	bc, ((320 * 240) / 2) - 1
 	ldir
 	ret
 
