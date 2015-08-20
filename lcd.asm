@@ -19,6 +19,7 @@ DrawRect:
 	ld	c, (ix + -8)
 	ld	b, 0
 	add.sis	hl, bc
+	dec	hl
 	ld	c, (ix + -9)
 	ld	b, e
 	call	DrawVertLine
@@ -26,6 +27,7 @@ DrawRect:
 	ld	a, d
 	add	a, e
 	ld	d, a
+	dec	d
 	ld	b, (ix + -8)
 	call	DrawHorizLine
 	pop	bc
@@ -50,6 +52,8 @@ InvertRect:
 ;  - BC
 ;  - DE
 ;  - HL
+
+
 ;------ DrawOutlinedFilledRect -------------------------------------------------
 DrawOutlinedFilledRect:
 ; Draws a rectangle with a black outline and filled interior.
@@ -57,18 +61,28 @@ DrawOutlinedFilledRect:
 ;  - HL: Left side
 ;  - D: Top
 ;  - E: Height
-;  - C: Fill color
+;  - C: High nibble: Line color, Low nibble: Fill color
 ;  - B: Width
 	dec	b
+	dec	b
+	dec	e
 	dec	e
 	inc	hl
 	inc	d
 	call	DrawFilledRect
 	inc	b
+	inc	b
 	inc	e
-	inc	hl
-	inc	d
-	ld	c, 0
+	inc	e
+	dec	hl
+	dec	d
+	ld	a, c
+	add	a, a
+	adc	a, a
+	adc	a, a
+	adc	a, a
+	adc	a, a
+	ld	c, a
 	jp	DrawRect
 
 
@@ -83,18 +97,18 @@ DrawFilledRect:
 ;  - C: Color
 ;  - B: Width
 ; Output:
-dfr_Flags	.equ	-12
+;  - Area filled
+; Destroys:
+;  - AF
+dfr_Flags	.equ	-10
 dfr_RowBytes	.equ	-11
-dfr_Rows	.equ	-10
+dfr_Rows	.equ	-12
 dfr_Color_L	.equ	-13
 dfr_Color_M	.equ	-14
 dfr_Color_R	.equ	-15
 dfr_OddStart	.equ	0
 dfr_EvenEnd	.equ	1
-;  - Area filled
-; Destroys:
-;  - AF
-; Need:
+; Variables:
 ;  - Address
 ;  - Row start odd flag
 ;  - Row byte count
@@ -130,7 +144,7 @@ dfr_EvenEnd	.equ	1
 	mlt	de
 	srl	h
 	rr	l
-	jr	z, +_
+	jr	nc, +_
 	set	dfr_OddStart, (ix + dfr_Flags)
 _:	add	hl, de
 	ld	de, (mpLcdBase)
@@ -141,18 +155,22 @@ _:	add	hl, de
 	ld	(ix + dfr_RowBytes), b
 	jr	nc, dfr_rw_even
 	bit	dfr_OddStart, (ix + dfr_Flags)
-	jr	nz, dfr_rw_cont
+	jr	nz, +_
 	set	dfr_EvenEnd, (ix + dfr_Flags)
-	dec	b	; IS THIS CORRECT??
+	jr	dfr_rw_cont
+_:	inc	b
 	jr	dfr_rw_cont
 dfr_rw_even:
 	bit	dfr_OddStart, (ix + dfr_Flags)
 	jr	z, dfr_rw_cont
 	set	dfr_EvenEnd, (ix + dfr_Flags)
+	dec	(ix + dfr_RowBytes)
 dfr_rw_cont:
 	ld	e, b
+	ld	d, 0
 	ld	hl, 320 / 2
-	sbc	hl, de
+	or	a
+	sbc.sis	hl, de
 	ex	de, hl
 	pop	hl
 dfrloop:
@@ -163,9 +181,10 @@ dfrloop:
 	bit	dfr_OddStart, (ix + dfr_Flags)
 	jr	z, +_
 	ld	a, (hl)
-	and	0Fh
+	and	0F0h
 	or	(ix + dfr_Color_L)
 	ld	(hl), a
+	inc	hl
 _:	ld	a, (ix + dfr_RowBytes)
 	or	a
 	jr	z, ++_
@@ -177,7 +196,7 @@ _:	ld	(hl), a
 _:	bit	dfr_EvenEnd, (ix + dfr_Flags)
 	jr	z, +_
 	ld	a, (hl)
-	and	0F0h
+	and	0Fh
 	or	(ix + dfr_Color_R)
 	ld	(hl), a
 _:	add	hl, de
@@ -194,7 +213,6 @@ _:	add	hl, de
 	pop	hl
 	pop	ix
 	ret
-	
 
 
 ;------ DrawHorizLine ----------------------------------------------------------

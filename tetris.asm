@@ -90,12 +90,42 @@ _:	ld	de, (hl)
 ;  - E: Height
 ;  - B: Width
 ;  - C: Color
-	ld	hl, 10
-	ld	d, 4
-	ld	e, 6
-	ld	b, 12
-	ld	c, 2
-	call	DrawRect
+
+	
+	ld	hl, 10	; Column
+	ld	d, 4	; Row
+	ld	e, 6	; Height
+	ld	b, 12	; Width
+	ld	c, 042h
+	call	DrawOutlinedFilledRect
+	
+	ld	hl, 30	; Column
+	ld	d, 12	; Row
+	ld	e, 30	; Height
+	ld	b, 30	; Width
+	ld	c, 042h
+	call	DrawOutlinedFilledRect
+	
+	ld	hl, 70	; Column
+	ld	d, 12	; Row
+	ld	e, 30	; Height
+	ld	b, 31	; Width
+	ld	c, 042h
+	call	DrawOutlinedFilledRect
+	
+	ld	hl, 111	; Column
+	ld	d, 12	; Row
+	ld	e, 30	; Height
+	ld	b, 30	; Width
+	ld	c, 042h
+	call	DrawOutlinedFilledRect
+	
+	ld	hl, 151	; Column
+	ld	d, 12	; Row
+	ld	e, 31	; Height
+	ld	b, 31	; Width
+	ld	c, 042h
+	call	DrawOutlinedFilledRect
 	
 #ifdef	NEVER
 	ld	hl, 10

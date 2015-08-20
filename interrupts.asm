@@ -1,10 +1,4 @@
 ; Interrupts!
-; TODO:
-;  - Select interrupt sources
-;  - Timer stuff
-;  - IM2 init
-;  - Dispatch interrupts to correct handler
-
 
 
 ;------ ResetInterrupts --------------------------------------------------------
