@@ -85,7 +85,102 @@ _:	ld	de, (hl)
 	call	InitializeInterrupts
 
 	ei
+;  - HL: Left side
+;  - D: Top
+;  - E: Height
+;  - B: Width
+;  - C: Color
+	ld	hl, 10
+	ld	d, 4
+	ld	e, 6
+	ld	b, 12
+	ld	c, 2
+	call	DrawRect
 	
+#ifdef	NEVER
+	ld	hl, 10
+	ld	d, 5
+	ld	b, 10
+	ld	c, 2
+	call	DrawHorizLine
+	ld	hl, 10
+	ld	d, 6
+	ld	b, 10
+	ld	c, 2
+	call	DrawHorizLine
+	
+	ld	hl, 9
+	ld	d, 7
+	ld	b, 9
+	ld	c, 3
+	call	DrawHorizLine
+	ld	hl, 9
+	ld	d, 8
+	ld	b, 9
+	ld	c, 3
+	call	DrawHorizLine
+	
+	ld	hl, 9
+	ld	d, 9
+	ld	b, 10
+	ld	c, 4
+	call	DrawHorizLine
+	ld	hl, 9
+	ld	d, 10
+	ld	b, 10
+	ld	c, 4
+	call	DrawHorizLine
+	
+	ld	hl, 10
+	ld	d, 11
+	ld	b, 11
+	ld	c, 5
+	call	DrawHorizLine
+	ld	hl, 10
+	ld	d, 12
+	ld	b, 11
+	ld	c, 5
+	call	DrawHorizLine
+	
+	ld	hl, 10
+	ld	d, 6
+	ld	b, 5
+	ld	c, 6
+	call	DrawVertLine
+	ld	hl, 11
+	ld	d, 6
+	ld	b, 6
+	ld	c, 6
+	call	DrawVertLine
+	
+	ld	hl, 12
+	ld	d, 7
+	ld	b, 2
+	ld	c, 7
+	call	DrawVertLine
+	ld	hl, 13
+	ld	d, 7
+	ld	b, 3
+	ld	c, 7
+	call	DrawVertLine
+	
+	ld	hl, 15
+	ld	d, 6
+	ld	b, 6
+	ld	c, 8
+	call	DrawVertLine
+	ld	hl, 18
+	ld	d, 6
+	ld	b, 6
+	ld	c, 8
+	call	DrawVertLine
+#endif
+	
+	
+	
+	
+	call	GetKey
+	jp	Quit
 	
 loop:	
 	ld	hl, (lcdRow)
@@ -244,5 +339,7 @@ _:	ei
 #include "keyboard.asm"
 #include "timers.asm"
 #include "rtc.asm"
+#include "lcd.asm"
+#include "gui.asm"
 #include "data.asm"
 #include "font.asm"
