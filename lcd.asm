@@ -10,23 +10,24 @@ DrawRect:
 	push	ix
 	ld	ix, 0
 	add	ix, sp
-	push	hl	; ix - 3, ix - 2, ix - 1
-	push	de	; ix - 6, ix - 5, ix - 4
-	push	bc	; ix - 9, ix - 8, ix - 7
+	push	hl	; ix - 1, ix - 2, ix - 3
+	push	de	; ix - 4, ix - 5, ix - 6
+	push	bc	; ix - 7, ix - 8, ix - 9
 	call	DrawHorizLine
 	ld	b, e
 	call	DrawVertLine
 	ld	c, (ix + -8)
 	ld	b, 0
 	add.sis	hl, bc
-	ld	c, (ix + -7)
+	ld	c, (ix + -9)
 	ld	b, e
 	call	DrawVertLine
-	ld	hl, (ix + -1)
+	ld	hl, (ix + -3)
 	ld	a, d
 	add	a, e
 	ld	d, a
-;	call	DrawHorizLine
+	ld	b, (ix + -8)
+	call	DrawHorizLine
 	pop	bc
 	pop	de
 	pop	hl
@@ -103,10 +104,10 @@ dfr_EvenEnd	.equ	1
 	push	ix
 	ld	ix, 0
 	add	ix, sp
-	push	hl	; ix - 3, ix - 2, ix - 1
-	push	de	; ix - 6, ix - 5, ix - 4
-	push	bc	; ix - 9, ix - 8, ix - 7
-	push	de	; ix - 12, ix - 11, ix - 10
+	push	hl	; ix - 1, ix - 2, ix - 3
+	push	de	; ix - 4, ix - 5, ix - 6
+	push	bc	; ix - 7, ix - 8, ix - 9
+	push	de	; ix - 10, ix - 11, ix - 12
 	dec	sp	; ix - 13
 	dec	sp	; ix - 14
 	dec	sp	; ix - 15
