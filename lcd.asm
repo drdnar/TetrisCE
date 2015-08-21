@@ -40,6 +40,7 @@ DrawRect:
 ;------ InvertRect -------------------------------------------------------------
 InvertRect:
 ; Inverts the colors in a given region.
+; This may malfunction if the rectangle width is less than 3.
 ; Inputs:
 ;  - HL: Left size
 ;  - D: Top
@@ -49,9 +50,96 @@ InvertRect:
 ;  - Region inverted
 ; Destroys:
 ;  - AF
-;  - BC
-;  - DE
-;  - HL
+ivr_Flags	.equ	-10
+ivr_RowBytes	.equ	-11
+ivr_Rows	.equ	-12
+ivr_OddStart	.equ	0
+ivr_EvenEnd	.equ	1
+; Variables:
+;  - Address
+;  - Row start odd flag
+;  - Row byte count
+;  - Row end odd flag
+;  - Height
+;  - Row address offset
+	push	ix
+	ld	ix, 0
+	add	ix, sp
+	push	hl	; ix - 1, ix - 2, ix - 3
+	push	de	; ix - 4, ix - 5, ix - 6
+	push	bc	; ix - 7, ix - 8, ix - 9
+	push	de	; ix - 10, ix - 11, ix - 12
+	ld	(ix + ivr_Flags), 0
+	; Compute address
+	ld	e, 320 / 2
+	mlt	de
+	srl	h
+	rr	l
+	jr	nc, +_
+	set	ivr_OddStart, (ix + ivr_Flags)
+_:	add	hl, de
+	ld	de, (mpLcdBase)
+	add	hl, de
+	; Compute row width
+	push	hl
+	srl	b
+	ld	(ix + ivr_RowBytes), b
+	jr	nc, ivr_rw_even
+	bit	ivr_OddStart, (ix + ivr_Flags)
+	jr	nz, +_
+	set	ivr_EvenEnd, (ix + ivr_Flags)
+	jr	ivr_rw_cont
+_:	inc	b
+	jr	ivr_rw_cont
+ivr_rw_even:
+	bit	ivr_OddStart, (ix + ivr_Flags)
+	jr	z, ivr_rw_cont
+	set	ivr_EvenEnd, (ix + ivr_Flags)
+	dec	(ix + ivr_RowBytes)
+ivr_rw_cont:
+	ld	e, b
+	ld	d, 0
+	ld	hl, 320 / 2
+	or	a
+	sbc.sis	hl, de
+	ex	de, hl
+	pop	hl
+ivrloop:
+; Main fill loop
+; HL: Write ptr
+; DE: Row increment offset
+; B: Bytes to write per row
+	bit	ivr_OddStart, (ix + ivr_Flags)
+	jr	z, +_
+	ld	a, (hl)
+	xor	0Fh
+	ld	(hl), a
+	inc	hl
+_:	ld	a, (ix + ivr_RowBytes)
+	or	a
+	jr	z, ++_
+	ld	b, a
+_:	ld	a, (hl)
+	cpl
+	ld	(hl), a
+	inc	hl
+	djnz	-_
+_:	bit	ivr_EvenEnd, (ix + ivr_Flags)
+	jr	z, +_
+	ld	a, (hl)
+	xor	0F0h
+	ld	(hl), a
+_:	add	hl, de
+	dec	(ix + ivr_Rows)
+	jr	nz, ivrloop
+	inc	sp
+	inc	sp
+	inc	sp
+	pop	bc
+	pop	de
+	pop	hl
+	pop	ix
+	ret
 
 
 ;------ DrawOutlinedFilledRect -------------------------------------------------
