@@ -386,11 +386,13 @@ GetGlyphWidth:
 GetStrWidth:
 ; Computes the width, in pixels, of a string
 ; Input:
-;  - DE: Pointer to string
+;  - HL: Pointer to string
 ; Output:
 ;  - HL: Width of string, in pixels
 ; Destroys:
 ;  - AF
+;  - DE
+	ex	de, hl
 	or	a
 	sbc	hl, hl
 	push	hl
@@ -403,6 +405,64 @@ gswl:	ld	a, (de)
 	ld	c, a
 	add	hl, bc
 	jr	gswl
+
+
+;------ CenterObjectInfo -------------------------------------------------------
+CenterObjectInfo:
+; Computes location for an object given its size and center location.
+; Inputs:
+;  - HL: Size
+;  - DE: Column to center around
+; Output:
+;  - HL: Left edge of object
+; Destroys:
+;  - Flags
+	push	de
+	srl	h
+	rr	l
+	ex	de, hl
+	or	a
+	sbc.sis	hl, de
+	pop	de
+	ret
+
+
+;------ CenterTextInfo ---------------------------------------------------------
+CenterTextInfo:
+; Inputs:
+;  - HL: Pointer to string
+;  - DE: Column to center around
+; Outputs:
+;  - BC: String width
+;  - DE: Pointer to string
+;  - HL: Left edge of string
+; Destroys:
+;  - AF
+	push	hl
+	call	GetStrWidth
+	push	hl
+	pop	bc
+	call	CenterObjectInfo
+	pop	de
+	ret
+
+
+;------ PutSCentered -----------------------------------------------------------
+PutSCentered:
+; Displays text centered about a specific location.
+; Inputs:
+;  - HL: Pointer to string
+;  - DE: Column to center around
+; Outputs:
+;  - BC: String width
+;  - DE: Left edge of string
+; Destroys:
+;  - AF
+	call	CenterTextInfo
+	ld	(lcdCol), hl
+	ex	de, hl
+	call	PutS
+	ret
 
 
 ;------ PutC -------------------------------------------------------------------

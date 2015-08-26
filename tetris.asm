@@ -371,5 +371,8 @@ _:	ei
 #include "rtc.asm"
 #include "lcd.asm"
 #include "gui.asm"
+#include "gui_widgets.asm"
+#include "resources.asm"
+#include "resources_english.asm"
 #include "data.asm"
 #include "font.asm"

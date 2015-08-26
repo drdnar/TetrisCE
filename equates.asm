@@ -20,8 +20,9 @@ shortModeCode	.equ	pixelShadow2
 vars		.equ	pixelShadow2 + 1024
 
 savedSp		.equ	vars
+userLang	.equ	savedSp + 3
 ; Keyboard
-keyBuffer	.equ	savedSp + 3
+keyBuffer	.equ	userLang + 1
 kbdLastKey	.equ	keyBuffer + 1
 kbdInhibitTimer	.equ	kbdLastKey + 1
 ; Text

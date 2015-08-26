@@ -1,3 +1,24 @@
+;------ CallHL -----------------------------------------------------------------
+CallHL:
+; Calls the routine at HL, unless HL is zero.  If HL 0 is zero, returns to
+; caller without doing anything or changing any registers or flags.
+; Input:
+;  - HL: Take a wild guess, why don't you.
+; Output:
+;  - I dunno, ask the callee.
+; Destroys:
+;  - Why ask me?
+	push	af
+	add	hl, de
+	or	a
+	sbc	hl, de
+	jr	z, +_
+	pop	af
+	jp	(hl)
+_:	pop	af
+	ret
+
+
 ;------ GetKey -----------------------------------------------------------------
 ;GetKey:
 ;	call	_GetCSC

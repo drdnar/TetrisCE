@@ -51,9 +51,8 @@ GuiObjNavLeftId		.equ	GuiObjNavUpId + 1
 GuiObjNavRightId	.equ	GuiObjNavLeftId + 1
 GuiObjNavDownId		.equ	GuiObjNavRightId + 1
 GuiObjCustomData	.equ	GuiObjNavDownId + 1
-GuiObjForeColor		.equ	GuiObjCustomData
-GuiObjBackColor		.equ	GuiObjForeColor + 1
-
+GuiObjColors		.equ	GuiObjCustomData
+GuiObjRsrcId		.equ	GuiObjColors + 1
 ; RAM structure
 ;	.dl	initialDataPtr
 ;	.db	flags
@@ -82,8 +81,8 @@ GuiRamNavLeftId		.equ	GuiRamNavUpId + 1
 GuiRamNavRightId	.equ	GuiRamNavLeftId + 1
 GuiRamNavDownId		.equ	GuiRamNavRightId + 1
 GuiRamCustomData	.equ	GuiRamNavDownId + 1
-GuiRamForeColor		.equ	GuiRamCustomData
-GuiRamBackColor		.equ	GuiRamForeColor + 1
+GuiRamColors		.equ	GuiRamCustomData
+GuiRamRsrcId		.equ	GuiRamColors + 1
 
 ;	; Custom data for box
 ;	; . . . none needed.
@@ -188,10 +187,9 @@ guiLoadCallLoader:
 	ld	hl, GuiLoadRoutinesTable
 	add	hl, de
 	ld	hl, (hl)
-	ld	de, +_
-	push	de
-	jp	(hl)
-_:	jr	c, +_
+	scf
+	call	CallHL
+	jr	c, +_
 	ld	de, (GuiRamNext)
 	add	hl, de
 	ld	(GuiRamNext), de
@@ -254,146 +252,3 @@ GuiDo:
 ;  - Does what it says
 ; Destroys:
 ;  - Does not return to caller, so . . . all?
-
-
-
-;===============================================================================
-;====== GUI Objects ============================================================
-;===============================================================================
-GuiObjIdEndOfObjects		.equ	0
-GuiObjIdCustomObj		.equ	GuiObjIdEndOfObjects + 1
-GuiObjIdIdleRoutine		.equ	GuiObjIdCustomObj + 1
-GuiObjIdEmptyContainer		.equ	GuiObjIdIdleRoutine + 1
-GuiObjIdText			.equ	GuiObjIdEmptyContainer + 1
-GuiObjIdCenteredText		.equ	GuiObjIdText + 1
-GuiObjIdRightAlignedText	.equ	GuiObjIdCenteredText + 1
-GuiObjIdVertLine		.equ	GuiObjIdRightAlignedText + 1
-GuiObjIdHorizLine		.equ	GuiObjIdVertLine + 1
-GuiObjIdBox			.equ	GuiObjIdHorizLine + 1
-GuiObjIdFilledBox		.equ	GuiObjIdBox + 1
-GuiObjIdCenteredBox		.equ	GuiObjIdFilledBox + 1
-GuiObjIdCenteredFilledBox	.equ	GuiObjIdCenteredBox + 1
-GuiObjIdBoxedText		.equ	GuiObjIdCenteredFilledBox + 1
-GuiObjIdCenteredBoxedText	.equ	GuiObjIdBoxedText + 1
-GuiObjIdSprite			.equ	GuiObjIdCenteredBoxedText + 1
-GuiObjIdButton			.equ	GuiObjIdSprite + 1
-GuiObjIdCheckBox		.equ	GuiObjIdButton + 1
-GuiObjIdRadioButton		.equ	GuiObjIdCheckBox + 1
-GuiObjIdNumericUpDown		.equ	GuiObjIdRadioButton + 1
-GuiObjIdSimpleTextBox		.equ	GuiObjIdNumericUpDown + 1
-
-;------ ------------------------------------------------------------------------
-GuiLoadRoutinesTable:
-; A table of routines called when each object is loaded
-;	.dl	objectType0Routine
-;	.dl	objectType1Routine
-;	.dl	objectType2Routine
-;	.dl	...
-; Inputs:
-;  - IX: Pointer to RAM vars
-;  - IY: Pointer to source data
-; Outputs:
-;  - HL: Total RAM used
-;  - NC to keep RAM allocated
-;  - C to unallocate RAM (used for display-only objects)
-; Destroys:
-;  - Anything
-	.dl		; GuiObjIdEndOfObjects
-	.dl		; GuiObjIdCustomObj
-	.dl		; GuiObjIdIdleRoutine
-	.dl		; GuiObjIdEmptyContainer
-	.dl		; GuiObjIdText
-	.dl		; GuiObjIdCenteredText
-	.dl		; GuiObjIdRightAlignedText
-	.dl		; GuiObjIdVertLine
-	.dl		; GuiObjIdHorizLine
-	.dl		; GuiObjIdBox
-	.dl		; GuiObjIdFilledBox
-	.dl		; GuiObjIdCenteredBox
-	.dl		; GuiObjIdCenteredFilledBox
-	.dl		; GuiObjIdBoxedText
-	.dl		; GuiObjIdCenteredBoxedText
-	.dl		; GuiObjIdSprite
-	.dl		; GuiObjIdButton
-	.dl		; GuiObjIdCheckBox
-	.dl		; GuiObjIdRadioButton
-	.dl		; GuiObjIdNumericUpDown
-	.dl		; GuiObjIdSimpleTextBox
-
-
-;------ ------------------------------------------------------------------------
-GuiRenderRoutinesTable:
-; A table of routines called to draw each object type, after loading.
-; Used for GUIs that need to change what controls are displayed.
-;	.dl	objectType0Routine
-;	.dl	objectType1Routine
-;	.dl	objectType2Routine
-;	.dl	...
-; Inputs:
-;  - IX: Pointer to RAM vars
-;  - IY: Pointer to source data
-; Outputs:
-;  - None
-; Destroys:
-;  - Anything
-	.dl		; GuiObjIdEndOfObjects
-	.dl		; GuiObjIdCustomObj
-	.dl		; GuiObjIdIdleRoutine
-	.dl		; GuiObjIdEmptyContainer
-	.dl		; GuiObjIdText
-	.dl		; GuiObjIdCenteredText
-	.dl		; GuiObjIdRightAlignedText
-	.dl		; GuiObjIdVertLine
-	.dl		; GuiObjIdHorizLine
-	.dl		; GuiObjIdBox
-	.dl		; GuiObjIdFilledBox
-	.dl		; GuiObjIdCenteredBox
-	.dl		; GuiObjIdCenteredFilledBox
-	.dl		; GuiObjIdBoxedText
-	.dl		; GuiObjIdCenteredBoxedText
-	.dl		; GuiObjIdSprite
-	.dl		; GuiObjIdButton
-	.dl		; GuiObjIdCheckBox
-	.dl		; GuiObjIdRadioButton
-	.dl		; GuiObjIdNumericUpDown
-	.dl		; GuiObjIdSimpleTextBox
-
-
-;------ ------------------------------------------------------------------------
-GuiActionsTable:
-; A table of routines called when the user wants to interact with an object
-;	.dl	objectType0Routine
-;	.dl	objectType1Routine
-;	.dl	objectType2Routine
-;	.dl	...
-; THIS IS A JUMP, NOT A CALL
-; To return to the GUI, load the object ID from the source data, and then jump
-; to GuiDo.
-; Inputs:
-;  - A: Button keycode pressed
-;  - IX: Pointer to RAM vars
-; Outputs:
-;  - Does not return; none
-; Destroys:
-;  - All
-	.dl		; GuiObjIdEndOfObjects
-	.dl		; GuiObjIdCustomObj
-	.dl		; GuiObjIdIdleRoutine
-	.dl		; GuiObjIdEmptyContainer
-	.dl		; GuiObjIdText
-	.dl		; GuiObjIdCenteredText
-	.dl		; GuiObjIdRightAlignedText
-	.dl		; GuiObjIdVertLine
-	.dl		; GuiObjIdHorizLine
-	.dl		; GuiObjIdBox
-	.dl		; GuiObjIdFilledBox
-	.dl		; GuiObjIdCenteredBox
-	.dl		; GuiObjIdCenteredFilledBox
-	.dl		; GuiObjIdBoxedText
-	.dl		; GuiObjIdCenteredBoxedText
-	.dl		; GuiObjIdSprite
-	.dl		; GuiObjIdButton
-	.dl		; GuiObjIdCheckBox
-	.dl		; GuiObjIdRadioButton
-	.dl		; GuiObjIdNumericUpDown
-	.dl		; GuiObjIdSimpleTextBox
