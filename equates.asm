@@ -42,14 +42,36 @@ seed2		.equ	randomVal + 2
 seed2Short	.equ	(seed2 & 0FFFFh)
 ; Timers
 generalTimer	.equ	seed2 + 3
+; GUI
+GuiRamStart	.equ	generalTimer + 4
+GuiRamSize	.equ	GuiRamStart + GuiRamStart + 3
+GuiRamNext	.equ	GuiRamSize + 3
+GuiMaxObjects	.equ	GuiRamNext + 3
+GuiRam		.equ	GuiMaxObjects + 1
+
 ;end_of_game_vars	.equ	OP7 + 9
 
-; 25800h Size of VRAM
-; 12C00  Half-size of VRAM
+; 262144 bytes (256 K) main RAM
+; 153600 bytes (150 K) VRAM
+; 415744 bytes (406 K) total RAM
+; D00000	System vars, 12790 bytes
+; D031F6	pixelShadow	8400
+; D052C6	pixelShadow2	8400
+; D07396	cmdPixelShadow	8400
+; D09466	plotSScreen	21945
+; D0EA1F	saveSScreen	21945
+; D13FD8	end of scrap RAM
+; D1A881	userMem
+; Total static allocation: 108673 bytes
+; 25800h 150 K  Size of VRAM
+; 12C00  75 K   Half-size of VRAM
+; 9600   37.5 K Quarter-size of VRAM
 ; D40000 START OF VRAM
+; D49600 First quarter of VRAM
 ; D52C00 Middle of VRAM
-; D65800 END OF VRAM	
+; D5C200 Third quarter of VRAM
 ; D5D5D5 ISR
+; D65800 END OF VRAM
 ; So let's put the IVT at D5D600, 258 bytes
 ;ivtLocation	.equ	(pixelShadow2 + 8400 - 258) & 0FFFF00h
 ivtLocation	.equ	0D5D600h
