@@ -1,8 +1,8 @@
 ;===============================================================================
 ;====== GUI Objects ============================================================
 ;===============================================================================
-GuiObjIdEndOfObjects		.equ	0
-GuiObjIdCustomObj		.equ	GuiObjIdEndOfObjects + 1
+; ID 0 reserved
+GuiObjIdCustomObj		.equ	1
 GuiObjIdIdleRoutine		.equ	GuiObjIdCustomObj + 1
 GuiObjIdEmptyContainer		.equ	GuiObjIdIdleRoutine + 1
 GuiObjIdText			.equ	GuiObjIdEmptyContainer + 1
@@ -40,7 +40,7 @@ GuiLoadRoutinesTable:
 ;  - C to unallocate RAM (used for display-only objects)
 ; Destroys:
 ;  - Anything
-	.dl	0	; GuiObjIdEndOfObjects
+	.dl	0	; 
 	.dl	GuiObjCustomObjLoad	; GuiObjIdCustomObj
 	.dl	GuiObjIdleRoutineLoad	; GuiObjIdIdleRoutine
 	.dl	GuiObjEmptyContainerLoad	; GuiObjIdEmptyContainer
@@ -78,7 +78,7 @@ GuiRenderRoutinesTable:
 ;  - None
 ; Destroys:
 ;  - Anything
-	.dl	0	; GuiObjIdEndOfObjects
+	.dl	0	; 
 	.dl	GuiObjCustomObjRender	; GuiObjIdCustomObj
 	.dl	0	; GuiObjIdIdleRoutine
 	.dl	0	; GuiObjIdEmptyContainer
@@ -118,7 +118,7 @@ GuiActionsTable:
 ;  - Does not return; none
 ; Destroys:
 ;  - All
-	.dl	0	; GuiObjIdEndOfObjects
+	.dl	0	; 
 	.dl	GuiObjCustomObjAction	; GuiObjIdCustomObj
 	.dl	0	; GuiObjIdIdleRoutine
 	.dl	0	; GuiObjIdEmptyContainer
@@ -212,7 +212,11 @@ GuiRamTextSize	.equ	GuiRamTextRsrcId + 2
 ;------ ------------------------------------------------------------------------
 GuiObjTextLoad:
 GuiObjTextRender:
-	ld	hl, (ix + GuiRamCol)
+	ld	a, (fontHeight)
+	or	a
+	jr	nz, +_
+	ld	(ix + GuiRamHeight), a
+_:	ld	hl, (ix + GuiRamCol)
 	inc	hl
 	dec.sis	hl
 	ld	(lcdCol), hl
@@ -238,7 +242,11 @@ GuiRamCTextSize	.equ	GuiRamTextSize
 
 GuiObjCTextLoad:
 GuiObjCTextRender:
-	ld	a, (ix + GuiRamRow)
+	ld	a, (fontHeight)
+	or	a
+	jr	nz, +_
+	ld	(ix + GuiRamHeight), a
+_:	ld	a, (ix + GuiRamRow)
 	ld	(lcdRow), a
 	ld	a, (ix + GuiRamTextColors)
 	call	SetColors
@@ -261,7 +269,11 @@ GuiRamRextSize	.equ	GuiRamTextSize
 
 GuiObjRTextLoad:
 GuiObjRTextRender:
-	ld	a, (ix + GuiRamRow)
+	ld	a, (fontHeight)
+	or	a
+	jr	nz, +_
+	ld	(ix + GuiRamHeight), a
+_:	ld	a, (ix + GuiRamRow)
 	ld	(lcdRow), a
 	ld	a, (ix + GuiRamTextColors)
 	call	SetColors

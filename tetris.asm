@@ -91,6 +91,79 @@ _:	ld	de, (hl)
 ;  - B: Width
 ;  - C: Color
 
+
+
+
+	ld	a, 128
+	ld	de, 1024
+	ld	hl, GuiRam
+	ld	iy, testGui
+	call	GuiLoad
+	call	GetKey
+	ret
+
+
+testGui:
+	.db	1				; GuiObjId
+	.db	GuiObjTextSize			; GuiObjSize
+	.db	0				; GuiObjParentId
+	.db	GuiObjIdText			; GuiObjType
+	.db	0				; GuiObjFlags
+	.dw	10				; GuiObjCol
+	.db	15				; GuiObjRow
+	.db	0				; GuiObjWidth
+	.db	0				; GuiObjHeight
+	.db	colorWhite | bgColorBlack	; GuiObjTextColors
+	.dw	RsrcTestString			; GuiObjTextRsrcId
+
+	.db	2				; GuiObjId
+	.db	GuiObjTextSize			; GuiObjSize
+	.db	0				; GuiObjParentId
+	.db	GuiObjIdCenteredText		; GuiObjType
+	.db	0				; GuiObjFlags
+	.dw	310				; GuiObjCol
+	.db	15				; GuiObjRow
+	.db	0				; GuiObjWidth
+	.db	0				; GuiObjHeight
+	.db	colorWhite | bgColorBlack	; GuiObjTextColors
+	.dw	RsrcTestString			; GuiObjTextRsrcId
+
+	.db	3				; GuiObjId
+	.db	GuiObjTextSize			; GuiObjSize
+	.db	0				; GuiObjParentId
+	.db	GuiObjIdCenteredText		; GuiObjType
+	.db	0				; GuiObjFlags
+	.dw	160				; GuiObjCol
+	.db	15				; GuiObjRow
+	.db	0				; GuiObjWidth
+	.db	0				; GuiObjHeight
+	.db	colorWhite | bgColorBlack	; GuiObjTextColors
+	.dw	RsrcTestString			; GuiObjTextRsrcId
+
+
+
+; End of widgets list
+	.db	0	; GuiObjId
+
+
+	.db	1				; GuiObjId
+	.db	GuiObjTextSize			; GuiObjSize
+	.db	0				; GuiObjParentId
+	.db	GuiObjIdText			; GuiObjType
+	.db	0				; GuiObjFlags
+	.dw	10				; GuiObjCol
+	.db	15				; GuiObjRow
+	.db	0				; GuiObjWidth
+	.db	0				; GuiObjHeight
+	.db	0				; GuiObjNavUpId
+	.db	0				; GuiObjNavLeftId
+	.db	0				; GuiObjNavRightId
+	.db	0				; GuiObjNavDownId
+	.db	0				; GuiObjCustomData
+	.db	0				; GuiObjColors
+	.db	0				; GuiObjRsrcId
+
+
 	
 	ld	hl, 10	; Column
 	ld	d, 4	; Row

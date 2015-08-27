@@ -37,13 +37,13 @@ LocalizedResourcesTablesTable:
 ;------ ------------------------------------------------------------------------
 GlobalResourcesTable:
 RsrcTestString	.equ	0
-	.dl	Rsrc_TestString
+	.dl	rsrc_TestString
 
 
 
 
 
-Rsrc_TestString:
+rsrc_TestString:
 	.db	"TEST String", 0
 
 
