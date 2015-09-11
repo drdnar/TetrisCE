@@ -1,3 +1,88 @@
+;===============================================================================
+;====== Keyboard Driver ========================================================
+;===============================================================================
+#ifndef	DEBUG_KEYBOARD_ROUTINE
+debug_InitializeKeyboard:
+debug_RestoreKeyboard:
+
+
+;------ GetKey -----------------------------------------------------------------
+debug_GetKey:
+	push	bc
+	call	debug_GetCSC
+	ld	bc, (debug_LastKey)
+	cp	c
+	jr	nz, +_
+	xor	a
+	ret
+_:	ld	(debug_LastKey), a
+	pop	bc
+	ret
+
+
+;------ GetCSC -----------------------------------------------------------------
+debug_GetCSC:
+; Scans the keyboard matrix for any pressed key, returning the first it finds,
+; or 0 if none.
+; Inputs:
+;  - None
+; Output:
+;  - Code in A, or 0 if none
+; Destroys:
+;  - BC
+	ld	bc, mpKbdRow1 | 0700h
+_:	ld	a, (bc)
+	or	a
+	jr	nz, +_
+	inc	c
+	inc	c
+	djnz	-_
+	ret
+_:	dec	b
+	sla	b
+	sla	b
+	sla	b
+	; Get which bit in A is reset
+_:	rrca
+	inc	b
+	jr	nc, -_
+	ld	a, b
+	ret
+
+#else
+
+debug_GetKey	.equ	DEBUG_KEYBOARD_ROUTINE
+debug_InitializeKeyboard:
+	ld	hl, mpKbdScanMode
+	ld	de, debug_KeyboardPrevConfig
+	ld	bc, 13
+	ldir
+	ld	hl, +_
+	ld	de, mpKbdScanMode
+	ld	bc, 13
+	ldir
+	ret
+_:	.dw	kbdSingleScan | 0F00h, 0F00h	; Scan mode
+	.db	8	; Rows
+	.db	8	; Columns
+	.dw	0	; unused
+	.dw	0FFh, 0	; Int status/ACK
+	.db	0	; Int enable
+
+
+debug_RestoreKeyboard:
+	ld	hl, debug_KeyboardPrevConfig
+	ld	de, mpKbdScanMode
+	ld	bc, 13
+	ldir
+	ret
+
+#endif
+
+
+;===============================================================================
+;====== LCD Driver =============================================================
+;===============================================================================
 
 ;====== ClearLcd ===============================================================
 debug_ClearLcd:
@@ -44,6 +129,10 @@ debug_RestoreLcd:
 	ret
 
 
+;====== PutMap =================================================================
+debug_AdvanceCursor:
+
+
 ;====== PutC ===================================================================
 debug_PutC:
 	push	af
@@ -67,7 +156,19 @@ debug_PutC:
 	jr	z, +_
 	ex	de, hl
 	set	7, (hl)
-_:	ld	e, a
+_:	call	debug_PutMap
+	call	debug_AdvanceCursor
+	pop	ix
+	pop	hl
+	pop	de
+	pop	bc
+	pop	af
+	ret
+
+
+;====== PutMap =================================================================
+debug_PutMap:
+	ld	e, a
 	; Get pointer to font data
 	ld	d, debug_textHeight
 	mlt	de
@@ -95,9 +196,4 @@ _:	ld	a, (ix)
 	ld	(hl), a
 	add	hl, de
 	djnz	-_
-	pop	ix
-	pop	hl
-	pop	de
-	pop	bc
-	pop	af
 	ret
