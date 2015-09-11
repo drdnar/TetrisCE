@@ -100,7 +100,7 @@ _:	ld	de, (hl)
 	ld	iy, testGui
 	call	GuiLoad
 	call	GetKey
-	ret
+	jp	Quit
 
 
 testGui:

@@ -14,7 +14,7 @@ GetResource:
 	bit	7, h
 	jr	z, +_
 	res	7, h
-	ld	de, LocalizedResourceTablesTable
+	ld	de, LocalizedResourcesTablesTable
 	push	hl
 	ld	hl, (userLang)
 	ld	h, 3

@@ -45,7 +45,7 @@ seed2Short	.equ	(seed2 & 0FFFFh)
 generalTimer	.equ	seed2 + 3
 ; GUI
 GuiRamStart	.equ	generalTimer + 4
-GuiRamSize	.equ	GuiRamStart + GuiRamStart + 3
+GuiRamSize	.equ	GuiRamStart + 3
 GuiRamNext	.equ	GuiRamSize + 3
 GuiMaxObjects	.equ	GuiRamNext + 3
 GuiRam		.equ	GuiMaxObjects + 1
