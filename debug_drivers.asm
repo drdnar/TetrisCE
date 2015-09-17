@@ -2,9 +2,6 @@
 ;====== Keyboard Driver ========================================================
 ;===============================================================================
 #ifndef	DEBUG_KEYBOARD_ROUTINE
-debug_InitializeKeyboard:
-debug_RestoreKeyboard:
-
 
 ;------ GetKey -----------------------------------------------------------------
 debug_GetKey:
@@ -49,10 +46,18 @@ _:	rrca
 	ld	a, b
 	ret
 
-#else
 
-debug_GetKey	.equ	DEBUG_KEYBOARD_ROUTINE
+;------ InitializeKeyboard -----------------------------------------------------
 debug_InitializeKeyboard:
+; Switches keyboard configuration into debug mode.
+; Inputs:
+;  - None
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - BC
+;  - DE
+;  - HL
 	ld	hl, mpKbdScanMode
 	ld	de, debug_KeyboardPrevConfig
 	ld	bc, 13
@@ -70,11 +75,27 @@ _:	.dw	kbdSingleScan | 0F00h, 0F00h	; Scan mode
 	.db	0	; Int enable
 
 
+;------ RestoreKeyboard --------------------------------------------------------
 debug_RestoreKeyboard:
+; Inputs:
+;  - None
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - BC
+;  - DE
+;  - HL
 	ld	hl, debug_KeyboardPrevConfig
 	ld	de, mpKbdScanMode
 	ld	bc, 13
 	ldir
+	ret
+
+#else
+
+debug_GetKey	.equ	DEBUG_KEYBOARD_ROUTINE
+debug_InitializeKeyboard:
+debug_RestoreKeyboard:
 	ret
 
 #endif
@@ -84,8 +105,17 @@ debug_RestoreKeyboard:
 ;====== LCD Driver =============================================================
 ;===============================================================================
 
-;====== ClearLcd ===============================================================
+;------ ClearLcd ---------------------------------------------------------------
 debug_ClearLcd:
+; Clears the screen.
+; Inputs:
+;  - None
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - BC
+;  - DE
+;  - HL
 	ld	hl, (mpLcdBase)
 	ld	(hl), 0
 	push	hl
@@ -96,9 +126,17 @@ debug_ClearLcd:
 	ret
 
 
-;====== InitializeLcd ==========================================================
+;------ InitializeLcd ----------------------------------------------------------
 debug_InitializeLcd:
-	ld	hl, mpLcdCtrlRange
+; Changes the LCD into debug mode.
+; Inputs:
+;  - None
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - BC
+;  - DE
+;  - HL	ld	hl, mpLcdCtrlRange
 	ld	de, debug_LcdPrevConfig
 	ld	bc, debug_LcdSettingsSize
 	ldir
@@ -117,7 +155,16 @@ debug_InitializeLcd:
 	ret
 	
 	
-;====== RestoreLcd =============================================================
+;------ RestoreLcd -------------------------------------------------------------
+; Restores the LCD to its settings from before entering debug mode.
+; Inputs:
+;  - None
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - BC
+;  - DE
+;  - HL
 debug_RestoreLcd:
 	ld	hl, debug_LcdPrevConfig
 	ld	de, mpLcdCtrlRange
@@ -129,12 +176,51 @@ debug_RestoreLcd:
 	ret
 
 
-;====== PutMap =================================================================
+;------ AdvanceCursor ----------------------------------------------------------
 debug_AdvanceCursor:
+; Moves the cursor right.
+; Inputs:
+;  - None
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - AF
+	ld	a, (debug_CurCol)
+	inc	a
+	ld	(debug_CurCol), a
+	cp	debug_Cols
+	ret	c
+;------ NewLine ----------------------------------------------------------------
+debug_NewLine:
+; Moves the cursor to a new line.
+; Inputs:
+;  - None
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - AF
+	xor	a
+	ld	(debug_CurCol), a
+	ld	a, (debug_CurRow)
+	inc	a
+	ld	(debug_CurRow), a
+	cp	debug_Rows
+	ret	c
+	xor	a
+	ld	(debug_CurRow), a
+	ret
 
 
-;====== PutC ===================================================================
+;------ PutC -------------------------------------------------------------------
 debug_PutC:
+; Displays a character at the current cursor location and advances cursor.
+; Also copies to ASCII buffer if flag is set.
+; Inputs:
+;  - A: Character code
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - Nothing
 	push	af
 	push	bc
 	push	de
@@ -166,8 +252,19 @@ _:	call	debug_PutMap
 	ret
 
 
-;====== PutMap =================================================================
+;------ PutMap -----------------------------------------------------------------
 debug_PutMap:
+; Displays the given character on screen, at current cursor location.
+; Inputs:
+;  - A: Character code
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - AF
+;  - BC
+;  - DE
+;  - HL
+;  - IX
 	ld	e, a
 	; Get pointer to font data
 	ld	d, debug_textHeight
@@ -176,7 +273,8 @@ debug_PutMap:
 	add	ix, de
 	; Get LCD VRAM pointer
 	ld	hl, (debug_CurRow)
-	ld	c, h	; Other bytes zero from above
+	ld	bc, 0
+	ld	c, h
 	ld	h, (320 / debug_screenWidth) * debug_textHeight
 	mlt	hl
 	add	hl, bc
