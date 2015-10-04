@@ -5,6 +5,12 @@
 #include "ti84pce.inc"
 #include "equates.asm"
 
+#define	INCLUDE_DEBUGGER
+
+#ifdef	INCLUDE_DEBUGGER
+#include "debug_equates.asm"
+#endif
+
 	.org	userMem - 2
 	.db	tExtTok, tAsm84CeCmp
 
@@ -85,6 +91,30 @@ _:	ld	de, (hl)
 	call	InitializeInterrupts
 
 	ei
+	
+	call	debug_ClearLcd
+	call	debug_InitializeLcd
+	
+	call	GetKey
+	
+	call	debug_HomeUp
+	ld	a, '%'
+	call	debug_PutC
+	ld	hl, readystr
+	call	debug_PutS
+	
+	call	GetKey
+	
+	call	debug_RestoreLcd
+	
+	
+	call	GetKey
+	jp	Quit
+	
+	; Test debug display init
+	; Test debug display text
+	; Test debug entry/exit
+	
 ;  - HL: Left side
 ;  - D: Top
 ;  - E: Height
@@ -434,6 +464,14 @@ _:	ei
 	ret
 
 
+#ifdef	INCLUDE_DEBUGGER
+DEBUGGER_START:
+#include "debug_drivers.asm"
+#include "debug_font.asm"
+DEBUGGER_END:
+.echo	"Size of debugger: ", DEBUGGER_END - DEBUGGER_START, " bytes"
+.echo	"Debugger RAM: ", DEBUG_RAM_END - DEBUG_RAM, " bytes"
+#endif
 #include "game.asm"
 #include "random.asm"
 #include "text.asm"

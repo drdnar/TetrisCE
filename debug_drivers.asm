@@ -1,4 +1,18 @@
 ;===============================================================================
+;====== ========================================================================
+;===============================================================================
+debug_Enter:
+	call	debug_InitializeKeyboard
+	call	debug_InitializeLcd
+	ret
+
+debug_Exit:
+	call	debug_RestoreKeyboard
+	call	debug_RestoreLcd
+	ret
+
+
+;===============================================================================
 ;====== Keyboard Driver ========================================================
 ;===============================================================================
 #ifndef	DEBUG_KEYBOARD_ROUTINE
@@ -60,11 +74,11 @@ debug_InitializeKeyboard:
 ;  - HL
 	ld	hl, mpKbdScanMode
 	ld	de, debug_KeyboardPrevConfig
-	ld	bc, 13
+	ld	bc, debug_KeyboardConfigSize
 	ldir
 	ld	hl, +_
 	ld	de, mpKbdScanMode
-	ld	bc, 13
+	ld	bc, debug_KeyboardConfigSize
 	ldir
 	ret
 _:	.dw	kbdSingleScan | 0F00h, 0F00h	; Scan mode
@@ -87,7 +101,7 @@ debug_RestoreKeyboard:
 ;  - HL
 	ld	hl, debug_KeyboardPrevConfig
 	ld	de, mpKbdScanMode
-	ld	bc, 13
+	ld	bc, debug_KeyboardConfigSize
 	ldir
 	ret
 
@@ -116,7 +130,7 @@ debug_ClearLcd:
 ;  - BC
 ;  - DE
 ;  - HL
-	ld	hl, (mpLcdBase)
+	ld	hl, debug_Vram
 	ld	(hl), 0
 	push	hl
 	pop	de
@@ -136,7 +150,8 @@ debug_InitializeLcd:
 ; Destroys:
 ;  - BC
 ;  - DE
-;  - HL	ld	hl, mpLcdCtrlRange
+;  - HL
+	ld	hl, mpLcdCtrlRange
 	ld	de, debug_LcdPrevConfig
 	ld	bc, debug_LcdSettingsSize
 	ldir
@@ -150,6 +165,7 @@ debug_InitializeLcd:
 	ld	(mpLcdPalette), hl
 	dec.sis	hl
 	ld	(mpLcdPalette + 2), hl
+	ld	hl, (mpLcdBase)
 	ld	hl, debug_Vram
 	ld	(mpLcdBase), hl
 	ret
@@ -173,6 +189,23 @@ debug_RestoreLcd:
 	ld	de, mpLcdPalette
 	ld	bc, 5
 	ldir
+	ret
+
+
+;------ HomeUp -----------------------------------------------------------------
+debug_HomeUp:
+; Moves the cursor to the top-left.
+; Inputs:
+;  - None
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - Nothing
+	push	af
+	xor	a
+	ld	(debug_CurRow), a
+	ld	(debug_CurCol), a
+	pop	af
 	ret
 
 
@@ -211,6 +244,26 @@ debug_NewLine:
 	ret
 
 
+;------ PutS -------------------------------------------------------------------
+debug_PutS:
+; Displays a string, processes new line, nothing else.
+; Input:
+;  - HL: Pointer to string
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - AF
+;  - HL
+	ld	a, (hl)
+	inc	hl
+	or	a
+	ret	z
+	cp	debug_chNewLine
+	call	nz, debug_PutC
+	call	z, debug_NewLine
+	jr	debug_PutS
+
+
 ;------ PutC -------------------------------------------------------------------
 debug_PutC:
 ; Displays a character at the current cursor location and advances cursor.
@@ -230,7 +283,7 @@ debug_PutC:
 	ld	hl, (debug_CurRow)
 	ld	bc, 0
 	ld	c, h
-	ld	h, debug_screenWidth
+	ld	h, debug_Cols
 	mlt	hl
 	add	hl, bc
 	ld	de, debug_TextBuffer
@@ -269,7 +322,7 @@ debug_PutMap:
 	; Get pointer to font data
 	ld	d, debug_textHeight
 	mlt	de
-	ld	ix, debug_font
+	ld	ix, debug_fontDataTable	;debug_font
 	add	ix, de
 	; Get LCD VRAM pointer
 	ld	hl, (debug_CurRow)

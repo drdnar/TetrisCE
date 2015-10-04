@@ -477,6 +477,8 @@ PenRow          EQU  0D008D5h
 pixelShadow     EQU  0D031F6h
 pixelShadow2    EQU  0D052C6h
 cmdPixelShadow  EQU  0D07396h
+plotSScreen     EQU  0D09466h
+saveSScreen     EQU  0D0EA1Fh
 userMem         EQU  0D1A881h
 
  
