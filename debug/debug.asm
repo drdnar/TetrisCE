@@ -122,7 +122,7 @@ debug_Dummy:
 	jr	debug_Dummy
 
 
-;====== Initialize =============================================================
+;------ Initialize -------------------------------------------------------------
 debug_Initialize:
 ; Call this once at the start of the program to initialize the debugger.
 ; Otherwise, you'll crash when you attempt to enter it.
@@ -140,16 +140,17 @@ debug_Initialize:
 	ld	(debug_PreviousSp), sp
 	call	debug_ClearLcd
 	call	debug_HomeUp
+	call	debug_CmdInitialize
 	; This is pretty much safe because the stack is (should be) empty anyway.
-	ld	sp, debug_Stack + debug_StackSize + 1 - 10
-	ld	hl, debug_Dummy
+	ld	sp, debug_Stack + debug_StackSize + 1
+	ld	hl, debug_CmdStart
 	push	hl
 	ld	(debug_Sp), sp
 	ld	sp, (debug_PreviousSp)
 	ret
 
 
-;====== Enter ==================================================================
+;------ Enter ------------------------------------------------------------------
 debug_Enter:
 ; Basically, this performs a thread switch and futzes with some hardware.
 ; State saved/restored:
@@ -239,7 +240,7 @@ debug_Enter_di2:
 #endif
 
 
-;====== Exit ===================================================================
+;------ Exit -------------------------------------------------------------------
 debug_Exit:
 ; Basically, this performs a thread switch and futzes with some hardware.
 ; BUT it does the reverse of debug_Enter.  So there's that.

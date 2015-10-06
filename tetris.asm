@@ -10,8 +10,8 @@
 #define DEBUG_MUST_EI
 #define DEBUG_PANIC Quit
 #define	DEBUG_KEYBOARD_ROUTINE
-#define debug_GetKey	GetKey
-#define	debug_GetCSC	GetCSC
+#define debug_GetKey GetKey
+#define	debug_GetCSC GetCSC
 
 #ifdef	INCLUDE_DEBUGGER
 #include "debug/equates.asm"
@@ -106,10 +106,6 @@ _:	ld	de, (hl)
 	
 	call	GetKey
 	jp	Quit
-	
-	; Test debug display init
-	; Test debug display text
-	; Test debug entry/exit
 	
 ;  - HL: Left side
 ;  - D: Top
@@ -465,6 +461,7 @@ _:	ei
 DEBUGGER_START:
 #include "debug/debug.asm"
 #include "debug/drivers.asm"
+#include "debug/cmd.asm"
 #include "debug/font.asm"
 DEBUGGER_END:
 .echo	"Size of debugger: ", DEBUGGER_END - DEBUGGER_START, " bytes"

@@ -332,6 +332,7 @@ debug_PutC:
 	push	de
 	push	hl
 	push	ix
+#ifdef	NEVER
 	; Write ASCII to text buffer
 	ld	hl, (debug_CurRow)
 	ld	bc, 0
@@ -348,7 +349,9 @@ debug_PutC:
 	jr	z, +_
 	ex	de, hl
 	set	7, (hl)
-_:	call	debug_PutMap
+_:	
+#endif
+	call	debug_PutMap
 	call	debug_AdvanceCursor
 	pop	ix
 	pop	hl
