@@ -1,18 +1,4 @@
 ;===============================================================================
-;====== ========================================================================
-;===============================================================================
-debug_Enter:
-	call	debug_InitializeKeyboard
-	call	debug_InitializeLcd
-	ret
-
-debug_Exit:
-	call	debug_RestoreKeyboard
-	call	debug_RestoreLcd
-	ret
-
-
-;===============================================================================
 ;====== Keyboard Driver ========================================================
 ;===============================================================================
 #ifndef	DEBUG_KEYBOARD_ROUTINE
@@ -107,7 +93,6 @@ debug_RestoreKeyboard:
 
 #else
 
-debug_GetKey	.equ	DEBUG_KEYBOARD_ROUTINE
 debug_InitializeKeyboard:
 debug_RestoreKeyboard:
 	ret
@@ -130,7 +115,7 @@ debug_ClearLcd:
 ;  - BC
 ;  - DE
 ;  - HL
-	ld	hl, debug_Vram
+	ld	hl, debug_Vram	;(mpLcdBase)
 	ld	(hl), 0
 	push	hl
 	pop	de
@@ -165,7 +150,6 @@ debug_InitializeLcd:
 	ld	(mpLcdPalette), hl
 	dec.sis	hl
 	ld	(mpLcdPalette + 2), hl
-	ld	hl, (mpLcdBase)
 	ld	hl, debug_Vram
 	ld	(mpLcdBase), hl
 	ret
@@ -241,6 +225,75 @@ debug_NewLine:
 	ret	c
 	xor	a
 	ld	(debug_CurRow), a
+	ret
+
+
+;------ DispUhl ----------------------------------------------------------------
+debug_DispUhl:
+	call	debug_RotateHighByte
+	call	debug_DispByte
+	call	debug_RotateHighByte
+	call	debug_DispByte
+	call	debug_RotateHighByte
+	jr	debug_DispByte
+	
+
+;------ GetHighByte ------------------------------------------------------------
+debug_GetHighByte:
+	push	hl
+	call	debug_RotateHighByte
+	pop	hl
+	ret
+
+
+;------ RotateHighByte ---------------------------------------------------------
+debug_RotateHighByte:
+	add	hl, hl
+	adc	a, a
+	add	hl, hl
+	adc	a, a
+	add	hl, hl
+	adc	a, a
+	add	hl, hl
+	adc	a, a
+	add	hl, hl
+	adc	a, a
+	add	hl, hl
+	adc	a, a
+	add	hl, hl
+	adc	a, a
+	add	hl, hl
+	adc	a, a
+	ret
+
+
+;------ DispHl -----------------------------------------------------------------
+debug_DispHl:
+	ld	a, h
+	call	debug_DispByte
+	ld	a, l
+;------ DispByte ---------------------------------------------------------------
+debug_DispByte:
+; Display A in hex.
+; Input:
+;  - A: Byte
+; Output:
+;  - Byte displayed
+; Destroys:
+;  - AF
+	push	af
+	rra
+	rra
+	rra
+	rra
+	call	debug_dba
+	pop	af
+debug_dba:
+	or	0F0h
+	daa
+	add	a, 0A0h
+	adc	a, 40h
+	call	debug_PutC
 	ret
 
 
@@ -328,10 +381,12 @@ debug_PutMap:
 	ld	hl, (debug_CurRow)
 	ld	bc, 0
 	ld	c, h
-	ld	h, (320 / debug_screenWidth) * debug_textHeight
+	ld	h, debug_textHeight	; Row times lines per row . . .
+	mlt	hl
+	ld	h, debug_Cols		; . . . times bytes per line
 	mlt	hl
 	add	hl, bc
-	ld	de, (mpLcdBase)
+	ld	de, debug_Vram	;(mpLcdBase)
 	add	hl, de
 	; Loop
 	ld	c, 0

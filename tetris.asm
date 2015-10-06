@@ -4,11 +4,17 @@
 .assume ADL=1
 #include "ti84pce.inc"
 #include "equates.asm"
+#include "convhex.inc"
 
 #define	INCLUDE_DEBUGGER
+#define DEBUG_MUST_EI
+#define DEBUG_PANIC Quit
+#define	DEBUG_KEYBOARD_ROUTINE
+#define debug_GetKey	GetKey
+#define	debug_GetCSC	GetCSC
 
 #ifdef	INCLUDE_DEBUGGER
-#include "debug_equates.asm"
+#include "debug/equates.asm"
 #endif
 
 	.org	userMem - 2
@@ -89,24 +95,14 @@ _:	ld	de, (hl)
 	call	PutS
 	
 	call	InitializeInterrupts
-
+	
 	ei
 	
-	call	debug_ClearLcd
-	call	debug_InitializeLcd
+	call	debug_Initialize
 	
 	call	GetKey
 	
-	call	debug_HomeUp
-	ld	a, '%'
-	call	debug_PutC
-	ld	hl, readystr
-	call	debug_PutS
-	
-	call	GetKey
-	
-	call	debug_RestoreLcd
-	
+	call	debug_Enter
 	
 	call	GetKey
 	jp	Quit
@@ -459,6 +455,7 @@ Quit:
 	call	_ClrScrnFull
 	ld	b, 8
 _:	ei
+	nop
 	halt
 	djnz	-_
 	ret
@@ -466,8 +463,9 @@ _:	ei
 
 #ifdef	INCLUDE_DEBUGGER
 DEBUGGER_START:
-#include "debug_drivers.asm"
-#include "debug_font.asm"
+#include "debug/debug.asm"
+#include "debug/drivers.asm"
+#include "debug/font.asm"
 DEBUGGER_END:
 .echo	"Size of debugger: ", DEBUGGER_END - DEBUGGER_START, " bytes"
 .echo	"Debugger RAM: ", DEBUG_RAM_END - DEBUG_RAM, " bytes"

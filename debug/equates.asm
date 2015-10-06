@@ -1,101 +1,3 @@
-;------ ------------------------------------------------------------------------
-; Desired debugger functionality:
-;  - 16 K static code & data
-;     - No SMC, so could be located in flash, if we ever get flash apps
-;  - 16 K RAM usage
-;     - 9600 bytes VRAM
-;       Leaves 6784 bytes
-;     - 512 bytes stack
-;       Leaves 6272 bytes
-;     - 512 bytes reserved for static vars
-;       Leaves 5760 bytes
-;     - 2 x 256 bytes command history buffers
-;       Leaves 5248 bytes
-;     - 2 x 2048 bytes command output scroll buffer
-;       Leaves 1152 bytes
-;     - 2 x 128 bytes command edit buffer
-;       Leaves 896 bytes
-;     - 512 bytes for breakpoints list (54 entries)
-;       Leaves 384 bytes
-;  - Command-line based interface for speedy usage (once you've learned the
-;    commands, anyway)
-;  - Output scroll buffer
-;  - Two interactive windows, for fast toggling to compare things
-;  - Need:
-;     - debug/equates.asm
-;       Provides . . . equates.
-;        - RAM locations
-;        - Debugger's custom character codes
-;     - debug/drivers.asm
-;        - Section Keyboard
-;          Provides keyboard driver if host does not provide keyboard driver,
-;          or if host requires debugger to disable interrupts
-;        - Section LCD
-;          Provides B&W text-mode LCD ddriver
-;     - debug/cmd.asm
-;        - Section Windows
-;          Provides for global functions like exit and toggle active window
-;        - Section Scroll Buffer
-;          Provides support for scrolling up and down
-;        - Section Edit Buffer
-;          Provides the interactive edit buffer for commands
-;        - Section Command Parser
-;          Provides command parsing and infrastructure for help and
-;          completion
-;     - debug/debugger.asm
-;        - Section Breakpoints
-;          Provides breakpoint management:
-;           - Write breakpoints into program code
-;           - Restore program code after breakpoint
-;           - Add and remove breakpoints
-;        - Section Intruction Information
-;          Provides information on the size and type of instructions
-;          Used by the breakpoints system and single-stepper to prevent issues
-;          breaking after branches
-;        - Section Symbols
-;          Provides the built-in symbol list
-;        - Section Single Step
-;          Provides the functionality for single-stepping
-;        - Section Commands
-;          Provides command-line functions
-;        - Section Interactive Single Stepping
-;          Provides the interactive single-stepper
-;     - debug/hexeditor.asm
-;        - Section Commands
-;          Provides command-line functions
-;        - Section Interactive Hex Editor
-;          Provides the interactive hex editor
-;     - debug/disassembler.asm
-;        - Section Interactive UI
-;          Provides the disassembler's UI
-;        - Section Disassmbler
-;          Provides the actual disassembly routines
-;     - debug/disassembler_data.asm
-;          Provides data used by the disassembler
-;     - debug/hardware.asm
-;        - Section LCD
-;          Provides LCD driver status information
-;        - Section Keyboard
-;          Provides keyboard driver information
-;        - Section Interrupts
-;          Provides information on master interrupt mask
-;        - Section RTC
-;          Just shows and sets the timer
-;        - Section Timers
-;          Provides information on the timers
-;        - Section Backlight
-;          Provides LCD backlight status
-;        - Section USB
-;          Provide MAGIC
-;        - Section LED
-;          Shows the testing LED status.  Useless.
-;     - debug/os.asm
-;        - Section Flags
-;          Provides OS flags list
-;        - Section VAT
-;          Provides the Amazing VAT Walker!
-;        - Section Apps
-;          Provides app list
 
 
 ;------ ------------------------------------------------------------------------
@@ -104,12 +6,25 @@ debug_textInverseM		.equ	1
 debug_textHeight		.equ	14
 debug_screenWidth		.equ	320
 debug_screenHeight		.equ	240
+debug_StackSize			.equ	512
+debug_RegistersSize		.equ	32
+debug_RegistersCount		.equ	10
 
 debug_chNewLine			.equ	01h
 
-debug_Vram			.equ	DEBUG_RAM
+; For some reason, this must be a multiple of 8.
+
+debug_Vram			.equ	DEBUG_RAM + (8 - (DEBUG_RAM & 7))
+
 debug_VramSize			.equ	(320 * 240) / 8
-debug_TextBuffer		.equ	debug_Vram + debug_VramSize
+debug_Stack			.equ	debug_Vram + debug_VramSize
+debug_PreviousRegisters		.equ	debug_Stack + debug_StackSize
+debug_Registers			.equ	debug_PreviousRegisters + 32
+debug_PreviousSp		.equ	debug_Registers + 32
+debug_Sp			.equ	debug_PreviousSp + 3
+debug_Ief2			.equ	debug_Sp + 3
+debug_Lock			.equ	debug_Ief2 + 1
+debug_TextBuffer		.equ	debug_Lock + 1
 debug_Rows			.equ	17
 debug_Cols			.equ	40
 debug_CurRow			.equ	debug_textBuffer + (debug_Cols * debug_Rows)
