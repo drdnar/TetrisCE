@@ -135,6 +135,7 @@ debug_Initialize:
 ;  - BC
 ;  - DE
 ;  - HL
+	push	iy
 	ld	a, 255
 	ld	(debug_Lock), a
 	ld	(debug_PreviousSp), sp
@@ -147,6 +148,7 @@ debug_Initialize:
 	push	hl
 	ld	(debug_Sp), sp
 	ld	sp, (debug_PreviousSp)
+	pop	iy
 	ret
 
 

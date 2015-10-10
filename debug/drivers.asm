@@ -55,9 +55,7 @@ debug_InitializeKeyboard:
 ; Outputs:
 ;  - Documented effect(s)
 ; Destroys:
-;  - BC
-;  - DE
-;  - HL
+;  - BC, DE, HL
 	ld	hl, mpKbdScanMode
 	ld	de, debug_KeyboardPrevConfig
 	ld	bc, debug_KeyboardConfigSize
@@ -82,9 +80,7 @@ debug_RestoreKeyboard:
 ; Outputs:
 ;  - Documented effect(s)
 ; Destroys:
-;  - BC
-;  - DE
-;  - HL
+;  - BC, DE, HL
 	ld	hl, debug_KeyboardPrevConfig
 	ld	de, mpKbdScanMode
 	ld	bc, debug_KeyboardConfigSize
@@ -100,6 +96,124 @@ debug_RestoreKeyboard:
 #endif
 
 
+;------ GetKeyBlinky -----------------------------------------------------------
+debug_GetKeyBlinky:
+; Gets a key, and blinks a cursor.
+; Inputs:
+;  - Cursor type
+; Output:
+;  - A: Key code
+	push	bc
+	push	de
+	push	hl
+	push	ix
+	call	debug_CursorOn
+debug_getKeyBlinkyLoop:
+	call	GetCSC
+	or	a
+	jr	z, +_
+	push	af
+	ld	a, (debug_CursorFlags)
+	and	debug_CursorOnM
+	call	nz, debug_CursorOff
+	pop	af
+	pop	ix
+	pop	hl
+	pop	de
+	pop	bc
+	ret
+_:	ld	hl, (debug_CursorTimer)
+	dec	hl
+	ld	(debug_CursorTimer), hl
+	add	hl, de
+	sbc	hl, de
+	call	z, debug_CursorBlink
+	jr	debug_getKeyBlinkyLoop
+
+
+;------ CursorBlink ------------------------------------------------------------
+debug_CursorBlink:
+; Blinks the cursor.
+	ld	a, (debug_CursorFlags)
+	and	debug_CursorOnM
+	jr	nz, +_
+	call	debug_CursorOn
+	ret
+_:	call	debug_CursorOff
+	ret
+
+
+;------ CursorOn ---------------------------------------------------------------
+debug_CursorOn:
+; Displays the cursor.
+; Inputs:
+;  - Cursor type
+;  - Cursor location
+; Outputs:
+;  - Documented effect(s)
+;  - Cursor timer reset
+; Destroys:
+;  - AF, BC, DE, HL, IX
+	ld	ix, debug_CursorBitmapSave
+	call	debug_ReadGlyphBitmap
+	ld	a, (debug_CursorFlags)
+	or	debug_CursorOnM
+	ld	(debug_CursorFlags), a
+	bit	debug_CursorOther, a
+	jr	nz, debug_cursorOnOther
+	ld	b, debug_CursorOnM
+	bit	debug_CursorInsert, a
+	jr	z, +_
+	set	2, b
+_:	bit	debug_Cursor2nd
+	jr	z, +_
+	set	0, b
+	jr	debug_cursorOnHaveCursor
+_:	bit	debug_CursorAlpha, a
+	jr	z, debug_cursorOnHaveCursor
+	set	1, b
+	bit	debug_CursorLwrAlpha, a
+	jr	z, debug_cursorOnHaveCursor
+	set	0, b
+	jr	debug_cursorOnHaveCursor
+debug_cursorOnOther:
+	ld	de, +_
+	and	03h
+	sbc	hl, hl
+	ld	l, a
+	add	hl, de
+	ld	b, (hl)
+	jr	debug_cursorOnHaveCursor
+_:	.db	0, 1, 16, 2
+debug_cursorOnHaveCursor:
+	call	debug_PutMap
+	ld	hl, debug_CursorTime
+	ld	(debug_CursorTimer), hl
+	ret
+
+
+;------ CursorOff --------------------------------------------------------------
+debug_CursorOff:
+; Hides the cursor.
+; Inputs:
+;  - Old cursor bitmap
+;  - Cursor location
+; Outputs:
+;  - Documented effect(s)
+;  - Cursor timer reset
+; Destroys:
+;  - AF, BC, DE, HL, IX
+	ld	a, (debug_CursorFlags)
+	and	~debug_CursorOnM
+	ld	(debug_CursorFlags), a
+	ld	ix, debug_CursorBitmapSave
+	call	debug_PutMapRaw
+	ld	hl, debug_CursorTime
+	ld	(debug_CursorTimer), hl
+	ret
+
+
+
 ;===============================================================================
 ;====== LCD Driver =============================================================
 ;===============================================================================
@@ -112,9 +226,7 @@ debug_ClearLcd:
 ; Outputs:
 ;  - Documented effect(s)
 ; Destroys:
-;  - BC
-;  - DE
-;  - HL
+;  - BC, DE, HL
 	ld	hl, debug_Vram	;(mpLcdBase)
 	ld	(hl), 0
 	push	hl
@@ -133,9 +245,7 @@ debug_InitializeLcd:
 ; Outputs:
 ;  - Documented effect(s)
 ; Destroys:
-;  - BC
-;  - DE
-;  - HL
+;  - BC, DE, HL
 	ld	hl, mpLcdCtrlRange
 	ld	de, debug_LcdPrevConfig
 	ld	bc, debug_LcdSettingsSize
@@ -162,9 +272,7 @@ debug_InitializeLcd:
 ; Outputs:
 ;  - Documented effect(s)
 ; Destroys:
-;  - BC
-;  - DE
-;  - HL
+;  - BC, DE, HL
 debug_RestoreLcd:
 	ld	hl, debug_LcdPrevConfig
 	ld	de, mpLcdCtrlRange
@@ -228,75 +336,6 @@ debug_NewLine:
 	ret
 
 
-;------ DispUhl ----------------------------------------------------------------
-debug_DispUhl:
-	call	debug_RotateHighByte
-	call	debug_DispByte
-	call	debug_RotateHighByte
-	call	debug_DispByte
-	call	debug_RotateHighByte
-	jr	debug_DispByte
-	
-
-;------ GetHighByte ------------------------------------------------------------
-debug_GetHighByte:
-	push	hl
-	call	debug_RotateHighByte
-	pop	hl
-	ret
-
-
-;------ RotateHighByte ---------------------------------------------------------
-debug_RotateHighByte:
-	add	hl, hl
-	adc	a, a
-	add	hl, hl
-	adc	a, a
-	add	hl, hl
-	adc	a, a
-	add	hl, hl
-	adc	a, a
-	add	hl, hl
-	adc	a, a
-	add	hl, hl
-	adc	a, a
-	add	hl, hl
-	adc	a, a
-	add	hl, hl
-	adc	a, a
-	ret
-
-
-;------ DispHl -----------------------------------------------------------------
-debug_DispHl:
-	ld	a, h
-	call	debug_DispByte
-	ld	a, l
-;------ DispByte ---------------------------------------------------------------
-debug_DispByte:
-; Display A in hex.
-; Input:
-;  - A: Byte
-; Output:
-;  - Byte displayed
-; Destroys:
-;  - AF
-	push	af
-	rra
-	rra
-	rra
-	rra
-	call	debug_dba
-	pop	af
-debug_dba:
-	or	0F0h
-	daa
-	add	a, 0A0h
-	adc	a, 40h
-	call	debug_PutC
-	ret
-
-
 ;------ PutS -------------------------------------------------------------------
 debug_PutS:
 ; Displays a string, processes new line, nothing else.
@@ -305,8 +344,7 @@ debug_PutS:
 ; Outputs:
 ;  - Documented effect(s)
 ; Destroys:
-;  - AF
-;  - HL
+;  - AF, HL
 	ld	a, (hl)
 	inc	hl
 	or	a
@@ -369,17 +407,15 @@ debug_PutMap:
 ; Outputs:
 ;  - Documented effect(s)
 ; Destroys:
-;  - AF
-;  - BC
-;  - DE
-;  - HL
-;  - IX
+;  - AF, BC, DE, HL, IX
 	ld	e, a
 	; Get pointer to font data
 	ld	d, debug_textHeight
 	mlt	de
 	ld	ix, debug_fontDataTable	;debug_font
 	add	ix, de
+debug_PutMapRaw:
+; This lets you use anything as the bitmap to display.
 	; Get LCD VRAM pointer
 	ld	hl, (debug_CurRow)
 	ld	bc, 0
@@ -403,6 +439,38 @@ _:	ld	a, (ix)
 	inc	ix
 	xor	c
 	ld	(hl), a
+	add	hl, de
+	djnz	-_
+	ret
+
+
+;------ ReadGlyphBitmap --------------------------------------------------------
+debug_ReadGlyphBitmap:
+; Reads the bitmap data at the current cursor location.
+; Inputs:
+;  - Cursor location
+;  - IX: Location to write bitmap to
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - AF, BC, DE, HL, IX
+	; Get LCD VRAM pointer
+	ld	hl, (debug_CurRow)
+	ld	bc, 0
+	ld	c, h
+	ld	h, debug_textHeight	; Row times lines per row . . .
+	mlt	hl
+	ld	h, debug_Cols		; . . . times bytes per line
+	mlt	hl
+	add	hl, bc
+	ld	de, debug_Vram	;(mpLcdBase)
+	add	hl, de
+	; Loop
+	ld	de, 320 / 8
+	ld	b, debug_textHeight
+_:	ld	a, (hl)
+	ld	(ix), a
+	inc	ix
 	add	hl, de
 	djnz	-_
 	ret

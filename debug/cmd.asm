@@ -1,19 +1,30 @@
 ;===============================================================================
 ;====== ========================================================================
 ;===============================================================================
+;------ ------------------------------------------------------------------------
 debug_CmdInitialize:
 ; Reset windows
 ; Reset edit buffers
 ; Reset command history buffers
 ; Reset command output buffers
 	call	debug_CmdScrollBufferInitialize
+	xor	a
+	ld	(debug_CmdActive), a
 	ret
 
 
+;------ ------------------------------------------------------------------------
 debug_CmdStart:
-	
+; Reset stack
 	ld	sp, debug_Stack + debug_StackSize + 1
+	
+; TODO: Redraw output buffer
+; Display command prompt
+	ld	hl, debug_prompt
+	call	debug_PutS
 
+debug_prompt:
+	.db	"> ", 0
 
 
 ;===============================================================================
@@ -22,6 +33,13 @@ debug_CmdStart:
 debug_CmdScrollBufferInitialize:
 
 	ret
+
+
+;------ PrintStr ---------------------------------------------------------------
+debug_PrintStr:
+	call	debug_PutS
+	ret
+
 
 ;===============================================================================
 ;====== Edit Buffer ============================================================

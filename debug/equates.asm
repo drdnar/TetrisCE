@@ -1,6 +1,7 @@
 
 
 ;------ ------------------------------------------------------------------------
+debug_chNewLine			.equ	01h
 debug_textInverse		.equ	0
 debug_textInverseM		.equ	1
 debug_textHeight		.equ	14
@@ -8,6 +9,7 @@ debug_screenWidth		.equ	320
 debug_screenHeight		.equ	240
 debug_Rows			.equ	17
 debug_Cols			.equ	40
+debug_CursorTime		.equ	256
 debug_StackSize			.equ	512
 debug_RegistersSize		.equ	32
 debug_RegistersCount		.equ	10
@@ -16,8 +18,41 @@ debug_HistoryBufferSize		.equ	256
 debug_OutputBufferSize		.equ	2048
 debug_BpListSize		.equ	512
 debug_MaxBp			.equ	32
-
-debug_chNewLine			.equ	01h
+; Debug edit buffer struct
+debug_EditStart			.equ	0
+debug_EditEnd			.equ	debug_EditStart + 3
+debug_EditPtr			.equ	debug_EditEnd + 3
+debug_EditX			.equ	debug_EditPtr + 3
+debug_EditY			.equ	debug_EditX + 1
+debug_EditSize			.equ	debug_EditY + 2
+; Cursor flags
+debug_Cursor2nd			.equ	0
+debug_CursorInsert		.equ	1
+debug_CursorAlpha		.equ	2
+debug_CursorLwrAlpha		.equ	3
+debug_CursorCustom		.equ	4
+debug_CursorOther		.equ	6
+debug_CursorFull		.equ	1 + 64
+debug_CursorBox			.equ	2 + 64
+debug_CursorLine		.equ	3 + 64
+debug_CursorOn			.equ	7
+debug_CursorOnM			.equ	80h
+; Since every command window also has an edit buffer, why not combine the two structs?
+; Debug Command struct
+debug_CmdFlags			.equ	debug_EditSize
+; Start = Byte 0 of buffer; End = last byte of buffer plus 1.
+; Top = Ptr to first byte to read first entry from.
+; Bottom = Ptr to where to write next entry to.
+; The print and history buffers are circular.
+debug_CmdOutBufStart		.equ	debug_CmdFlags + 1
+debug_CmdOutBufEnd		.equ	debug_CmdOutBufStart + 3
+debug_CmdOutBufTop		.equ	debug_CmdOutBufEnd + 3
+debug_CmdOutBufBottom		.equ	debug_CmdOutBufTop + 3
+debug_CmdHistStart		.equ	debug_CmdOutBufBottom + 3
+debug_CmdHistEnd		.equ	debug_CmdHistStart + 3
+debug_CmdHistTop		.equ	debug_CmdHistEnd + 3
+debug_CmdHistBottom		.equ	debug_CmdHistTop + 3
+debug_CmdSize			.equ	debug_CmdHistBottom + 3
 
 ; For some reason, this must be a multiple of 8.
 
@@ -42,8 +77,14 @@ debug_LastKey			.equ	debug_LcdPrevPalette + 5
 debug_KeyReleaseCounter		.equ	debug_LastKey + 1
 debug_KeyboardPrevConfig	.equ	debug_KeyReleaseCounter + 1
 debug_KeyboardConfigSize	.equ	13
+debug_CursorFlags		.equ	debug_KeyboardPrevConfig + debug_KeyboardConfigSize
+debug_CursorBitmapSave		.equ	debug_CursorFlags + 1
+debug_CursorTimer		.equ	debug_CursorBitmapSave + 15
+debug_CmdActive			.equ	debug_CursorTimer + 3
+debug_Cmd0			.equ	debug_CmdActive + 1
+debug_Cmd1			.equ	debug_Cmd0 + debug_CmdSize
 
-debug_EndOfStaticVars		.equ	debug_KeyboardPrevConfig + debug_KeyboardConfigSize
+debug_EndOfStaticVars		.equ	debug_Cmd1 + debug_CmdSize
 
 .echo	"Size of debug static vars: ", debug_EndOfStaticVars - debug_StaticVars, " bytes"
 
