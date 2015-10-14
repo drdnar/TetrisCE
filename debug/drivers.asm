@@ -99,7 +99,7 @@ debug_RestoreKeyboard:
 ;------ GetKeyBlinky -----------------------------------------------------------
 debug_GetKeyBlinky:
 ; Gets a key, and blinks a cursor.
-; Inputs:
+; Input:
 ;  - Cursor type
 ; Output:
 ;  - A: Key code
@@ -114,7 +114,7 @@ debug_getKeyBlinkyLoop:
 	jr	z, +_
 	push	af
 	ld	a, (debug_CursorFlags)
-	and	debug_CursorOnM
+	and	debug_CursorActiveM
 	call	nz, debug_CursorOff
 	pop	af
 	pop	ix
@@ -122,7 +122,9 @@ debug_getKeyBlinkyLoop:
 	pop	de
 	pop	bc
 	ret
-_:	ld	hl, (debug_CursorTimer)
+_:	ld	b, 0
+	djnz	$
+	ld	hl, (debug_CursorTimer)
 	dec	hl
 	ld	(debug_CursorTimer), hl
 	add	hl, de
@@ -135,14 +137,9 @@ _:	ld	hl, (debug_CursorTimer)
 debug_CursorBlink:
 ; Blinks the cursor.
 	ld	a, (debug_CursorFlags)
-	and	debug_CursorOnM
-	jr	nz, +_
-	call	debug_CursorOn
-	ret
-_:	call	debug_CursorOff
-	ret
-
-
+	and	debug_CursorActiveM
+	jp	nz, debug_CursorOff
+	; Fall through to CursorOn
 ;------ CursorOn ---------------------------------------------------------------
 debug_CursorOn:
 ; Displays the cursor.
@@ -157,15 +154,15 @@ debug_CursorOn:
 	ld	ix, debug_CursorBitmapSave
 	call	debug_ReadGlyphBitmap
 	ld	a, (debug_CursorFlags)
-	or	debug_CursorOnM
+	or	debug_CursorActiveM
 	ld	(debug_CursorFlags), a
 	bit	debug_CursorOther, a
 	jr	nz, debug_cursorOnOther
-	ld	b, debug_CursorOnM
+	ld	b, 80h
 	bit	debug_CursorInsert, a
 	jr	z, +_
 	set	2, b
-_:	bit	debug_Cursor2nd
+_:	bit	debug_Cursor2nd, a
 	jr	z, +_
 	set	0, b
 	jr	debug_cursorOnHaveCursor
@@ -186,6 +183,7 @@ debug_cursorOnOther:
 	jr	debug_cursorOnHaveCursor
 _:	.db	0, 1, 16, 2
 debug_cursorOnHaveCursor:
+	ld	a, b
 	call	debug_PutMap
 	ld	hl, debug_CursorTime
 	ld	(debug_CursorTimer), hl
@@ -204,13 +202,175 @@ debug_CursorOff:
 ; Destroys:
 ;  - AF, BC, DE, HL, IX
 	ld	a, (debug_CursorFlags)
-	and	~debug_CursorOnM
+	and	(~debug_CursorActiveM) & 0FFh
 	ld	(debug_CursorFlags), a
+	ld	a, (debug_TextFlags)
+	push	af
+	and	(~debug_TextInverseM) & 255
+	ld	(debug_TextFlags), a
 	ld	ix, debug_CursorBitmapSave
 	call	debug_PutMapRaw
+	pop	af
+	ld	(debug_TextFlags), a
 	ld	hl, debug_CursorTime
 	ld	(debug_CursorTimer), hl
 	ret
+
+
+;------ GetKeyShifts -----------------------------------------------------------
+debug_GetKeyShifts:
+; Gets a key, but also processes shift keys.
+; Input:
+;  - Cursor type
+; Output:
+;  - A: Key code
+; Destroys:
+;  - Flags
+	call	debug_GetKeyBlinky
+	cp	sk2nd
+	jr	z, debug_getKeyShiftsCycle2nd
+	cp	skAlpha
+	jr	z, debug_getKeyShiftsCycleAlpha
+	cp	skDel
+	ret	nz
+	ld	a, (debug_CursorFlags)
+	bit	debug_Cursor2nd, a
+	jr	nz, +_
+	ld	a, skDel
+	ret
+_:	and	(~debug_Cursor2ndM) & 255
+	xor	debug_CursorInsertM
+debug_getKeyShiftsSaveCursor:
+	ld	(debug_CursorFlags), a
+	jr	debug_GetKeyShifts
+debug_getKeyShiftsCycle2nd:
+	ld	a, (debug_CursorFlags)
+	xor	debug_Cursor2ndM
+	jr	debug_getKeyShiftsSaveCursor
+debug_getKeyShiftsCycleAlpha:
+	ld	a, (debug_CursorFlags)
+	bit	debug_Cursor2nd, a
+	jr	z, +_
+	and	(~debug_Cursor2ndM) & 255
+	jr	debug_getKeyShiftsSaveCursor
+_:	bit	debug_CursorAlpha, a
+	jr	nz, +_
+	or	debug_CursorAlphaM
+	and	(~debug_CursorLwrAlphaM) & 255
+	jr	debug_getKeyShiftsSaveCursor
+_:	bit	debug_CursorLwrAlpha, a
+	jr	nz, +_
+	or	debug_CursorLwrAlphaM
+	jr	debug_getKeyShiftsSaveCursor
+_:	and	(~(debug_CursorLwrAlphaM | debug_CursorAlphaM)) & 255
+	jr	debug_getKeyShiftsSaveCursor
+
+
+;------ GetKeyAscii ------------------------------------------------------------
+debug_GetKeyAscii:
+; Gets an ASCII character, or a key code.
+; Inputs:
+;  - None
+; Output:
+;  - A: Key code
+;       Bit 7 set if return is not ASCII, but key code
+;       Bit 6 set if 2nd was pressed (e.g. 2nd + Up -> skUp | 40h)
+; Destroys:
+;  - Flags
+	call	debug_GetKeyShifts
+	
+	ret
+; TODO:
+;  - Process shifts
+;  - Write code to take debug_GetKeyShifts and make debug_GetAscii
+;  - Write code to process edit buffer
+debug_KeyAsciiTable1:
+
+
+debug_KeyAsciiTableLetters:
+	.db	(debug_KeyAsciiTableLetters_end - debug_KeyAsciiTableLetters - 1) / 2
+	.db	skMath, "A"
+	.db	skMatrix, "B"
+	.db	skPrgm, "C"
+	.db	skRecip, "D"
+	.db	skSin, "E"
+	.db	skCos, "F"
+	.db	skTan, "G"
+	.db	skPower, "H"
+	.db	skSquare, "I"
+	.db	skComma, "J"
+	.db	skLParen, "K"
+	.db	skRParen, "L"
+	.db	skDiv, "M"
+	.db	skLog, "N"
+	.db	sk7, "O"
+	.db	sk8, "P"
+	.db	sk9, "Q"
+	.db	skMul, "R"
+	.db	skLn, "S"
+	.db	sk4, "T"
+	.db	sk5, "U"
+	.db	sk6, "V"
+	.db	skSub, "W"
+	.db	skStore, "X"
+	.db	sk1, "Y"
+	.db	sk2, "Z"
+	.db	sk0, " "
+	.db	skDecPnt, ":"
+	.db	skChs, "?"
+	.db	skAdd, 22h	; Double quote
+;	.db	sk3, "[" ; Theta
+debug_KeyAsciiTableLetters_end:
+
+
+endLetterTable2:
+letterTableLength .equ (endLetterTable2 - letterTable) / 2
+numberTable:
+	.db	sk7, "7"
+	.db	sk8, "8"
+	.db	sk9, "9"
+	.db	sk4, "4"
+	.db	sk5, "5"
+	.db	sk6, "6"
+	.db	skSub, "-"
+	.db	sk1, "1"
+	.db	sk2, "2"
+	.db	sk3, "3"
+	.db	sk0, "0"
+	.db	skDecPnt, "."
+endNumberTable:
+	.db	skComma, ","
+	.db	skLParen, "("
+	.db	skRParen, ")"
+	.db	skDiv, 2Fh
+	.db	skMul, "*"
+	.db	skAdd, "+"
+	.db	skPower, "^"
+	.db	skStore, "="
+	.db	skMath, "`"
+
+
+	.db	skLParen, "{"
+	.db	skRParen, "}"
+	.db	sk7, "|"
+	.db	skComma, ";"
+	.db	sk8, "<"
+	.db	sk9, ">"
+	.db	skDiv, 5Ch	; Backslash
+	.db	skStore, "@"
+	.db	skRecip, "~"
+	
+	.db	skVars, "!"
+	.db	skStat, "#"
+	.db	skGraphVar, "&"
+	.db	skYEqu, "$"
+	.db	skWindow, "%"
+	.db	skZoom, 27h	; Single quote
+	.db	skTrace, "["
+	.db	skGraph, "]"
+	
+endNumberTable2:
+numberTableLength .equ	(endNumberTable2 - numberTable) / 2
 
 
 
@@ -429,8 +589,8 @@ debug_PutMapRaw:
 	add	hl, de
 	; Loop
 	ld	c, 0
-	ld	a, (debug_textFlags)
-	and	debug_textInverseM
+	ld	a, (debug_TextFlags)
+	and	debug_TextInverseM
 	jr	z, +_
 	ld	c, 255
 _:	ld	de, 320 / 8
@@ -441,6 +601,34 @@ _:	ld	a, (ix)
 	ld	(hl), a
 	add	hl, de
 	djnz	-_
+	ret
+
+
+;------ ScrollUpOneLine --------------------------------------------------------
+debug_ScrollUpOneLine:
+; Scrolls all text up one line.
+; Erases the bottom line of text.
+; Inputs:
+;  - None
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - Nothing.
+	push	bc
+	push	de
+	push	hl
+	ld	hl, debug_Vram + (debug_textHeight * 320 / 8)
+	ld	de, debug_Vram
+	ld	bc, (debug_Rows - 1) * (debug_textHeight * 320 / 8)
+	ldir
+	ld	hl, debug_Vram + ((debug_textHeight * 320 / 8) * (debug_Rows - 1))
+	ld	(hl), 0
+	ld	de, debug_Vram + ((debug_textHeight * 320 / 8) * (debug_Rows - 1)) + 1
+	ld	bc, (debug_textHeight * 320 / 8) - 1
+	ldir
+	pop	hl
+	pop	de
+	pop	bc
 	ret
 
 

@@ -2,14 +2,16 @@
 
 ;------ ------------------------------------------------------------------------
 debug_chNewLine			.equ	01h
-debug_textInverse		.equ	0
-debug_textInverseM		.equ	1
+; Text flags
+debug_TextInverse		.equ	0
+debug_TextInverseM		.equ	1
+; Stuff, again
 debug_textHeight		.equ	14
 debug_screenWidth		.equ	320
 debug_screenHeight		.equ	240
 debug_Rows			.equ	17
 debug_Cols			.equ	40
-debug_CursorTime		.equ	256
+debug_CursorTime		.equ	1000h
 debug_StackSize			.equ	512
 debug_RegistersSize		.equ	32
 debug_RegistersCount		.equ	10
@@ -22,21 +24,26 @@ debug_MaxBp			.equ	32
 debug_EditStart			.equ	0
 debug_EditEnd			.equ	debug_EditStart + 3
 debug_EditPtr			.equ	debug_EditEnd + 3
-debug_EditX			.equ	debug_EditPtr + 3
-debug_EditY			.equ	debug_EditX + 1
-debug_EditSize			.equ	debug_EditY + 2
+debug_EditBottom		.equ	debug_EditPtr + 3
+debug_EditY			.equ	EditBottom + 3
+debug_EditX			.equ	debug_EditY + 1
+debug_EditSize			.equ	debug_EditX + 2
 ; Cursor flags
 debug_Cursor2nd			.equ	0
+debug_Cursor2ndM		.equ	01h
 debug_CursorInsert		.equ	1
+debug_CursorInsertM		.equ	02h
 debug_CursorAlpha		.equ	2
+debug_CursorAlphaM		.equ	04h
 debug_CursorLwrAlpha		.equ	3
-debug_CursorCustom		.equ	4
-debug_CursorOther		.equ	6
-debug_CursorFull		.equ	1 + 64
-debug_CursorBox			.equ	2 + 64
-debug_CursorLine		.equ	3 + 64
-debug_CursorOn			.equ	7
-debug_CursorOnM			.equ	80h
+debug_CursorLwrAlphaM		.equ	08h
+debug_CursorOther		.equ	4
+debug_CursorOtherM		.equ	10h
+debug_CursorFull		.equ	1 + debug_CursorOtherM
+debug_CursorBox			.equ	2 + debug_CursorOtherM
+debug_CursorLine		.equ	3 + debug_CursorOtherM
+debug_CursorActive		.equ	7
+debug_CursorActiveM		.equ	80h
 ; Since every command window also has an edit buffer, why not combine the two structs?
 ; Debug Command struct
 debug_CmdFlags			.equ	debug_EditSize
@@ -69,8 +76,8 @@ debug_Ief2			.equ	debug_Sp + 3
 debug_Lock			.equ	debug_Ief2 + 1
 debug_CurRow			.equ	debug_Lock + 1
 debug_CurCol			.equ	debug_CurRow + 1
-debug_textFlags			.equ	debug_CurCol + 2
-debug_LcdPrevConfig		.equ	debug_textFlags + 1
+debug_TextFlags			.equ	debug_CurCol + 2
+debug_LcdPrevConfig		.equ	debug_TextFlags + 1
 debug_LcdSettingsSize		.equ	32
 debug_LcdPrevPalette		.equ	debug_LcdPrevConfig + debug_LcdSettingsSize
 debug_LastKey			.equ	debug_LcdPrevPalette + 5

@@ -86,3 +86,32 @@ debug_dba:
 	ret
 
 
+;------ MapTable ---------------------------------------------------------------
+debug_MapTable:
+; Maps an input in A to an output in A.
+; Inputs:
+;  - A: Input value
+;  - HL: Pointer to mapping table of form
+;     .db numberOfEntries
+;     .db inputValue1, outputValue1, inputValue2, outputValue2, &c.
+; Outputs:
+;  - A: Output value
+;  - B: Reverse index number of mapping entry (e.g. in 7-entry table, first is
+;       7, second is 6, &c., last is 1, 0 means not found, or first in 256 entry
+;       table)
+;  - NC if value found in table; C if no mapping found
+;  - If NC, Z if output is 0, NZ if output is not zero
+; Destroys:
+;  - HL
+	ld	b, (hl)
+	inc	hl
+_:	cp	(hl)
+	inc	hl
+	jr	z, +_
+	inc	hl
+	djnz	-_
+	scf
+	ret
+_:	ld	a, (hl)
+	or	a
+	ret
