@@ -284,7 +284,6 @@ debug_GetKeyAscii:
 ;  - Process shifts
 ;  - Write code to take debug_GetKeyShifts and make debug_GetAscii
 ;  - Write code to process edit buffer
-debug_KeyAsciiTable1:
 
 
 debug_KeyAsciiTableLetters:
@@ -319,13 +318,10 @@ debug_KeyAsciiTableLetters:
 	.db	skDecPnt, ":"
 	.db	skChs, "?"
 	.db	skAdd, 22h	; Double quote
-;	.db	sk3, "[" ; Theta
+	.db	sk3, debug_chTheta	; Theta
 debug_KeyAsciiTableLetters_end:
-
-
-endLetterTable2:
-letterTableLength .equ (endLetterTable2 - letterTable) / 2
-numberTable:
+debug_KeyAsciiTableNumbers:
+	.db	(debug_KeyAsciiTableNumbers_end - debug_KeyAsciiTableNumbers - 1) / 2
 	.db	sk7, "7"
 	.db	sk8, "8"
 	.db	sk9, "9"
@@ -338,7 +334,6 @@ numberTable:
 	.db	sk3, "3"
 	.db	sk0, "0"
 	.db	skDecPnt, "."
-endNumberTable:
 	.db	skComma, ","
 	.db	skLParen, "("
 	.db	skRParen, ")"
@@ -347,30 +342,29 @@ endNumberTable:
 	.db	skAdd, "+"
 	.db	skPower, "^"
 	.db	skStore, "="
-	.db	skMath, "`"
-
-
+	.db	skSquare, "`"
+	.db	skLog, "$"
+	.db	skLn, "%"
+debug_KeyAsciiTableNumbers_end:
+debug_KeyAsciiTableNumbers2nd:
+	.db	(debug_KeyAsciiTableNumbers2nd_end - debug_KeyAsciiTableNumbers2nd - 1) / 2
 	.db	skLParen, "{"
 	.db	skRParen, "}"
-	.db	sk7, "|"
+	.db	skDecPnt, "|"
+	.db	sk0, "_"
 	.db	skComma, ";"
 	.db	sk8, "<"
 	.db	sk9, ">"
 	.db	skDiv, 5Ch	; Backslash
 	.db	skStore, "@"
-	.db	skRecip, "~"
-	
-	.db	skVars, "!"
-	.db	skStat, "#"
-	.db	skGraphVar, "&"
-	.db	skYEqu, "$"
-	.db	skWindow, "%"
-	.db	skZoom, 27h	; Single quote
-	.db	skTrace, "["
-	.db	skGraph, "]"
-	
-endNumberTable2:
-numberTableLength .equ	(endNumberTable2 - numberTable) / 2
+	.db	skPower, "~"
+	.db	skMul, "["
+	.db	skSub, "]"
+	.db	skAdd, 27h	; Single quote
+	.db	skLog, "#"
+	.db	skLn, "&"
+	.db	skSquare, "!"
+debug_KeyAsciiTableNumbers2nd_end:
 
 
 

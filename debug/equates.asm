@@ -2,6 +2,7 @@
 
 ;------ ------------------------------------------------------------------------
 debug_chNewLine			.equ	01h
+debug_chTheta			.equ	7Fh
 ; Text flags
 debug_TextInverse		.equ	0
 debug_TextInverseM		.equ	1
