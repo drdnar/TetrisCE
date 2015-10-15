@@ -459,10 +459,6 @@ _:	ei
 #ifdef	INCLUDE_DEBUGGER
 DEBUGGER_START:
 #include "debug/debug.asm"
-#include "debug/drivers.asm"
-#include "debug/cmd.asm"
-#include "debug/font.asm"
-#include "debug/routines.asm"
 DEBUGGER_END:
 .echo	"Size of debugger: ", DEBUGGER_END - DEBUGGER_START, " bytes"
 .echo	"Debugger RAM: ", DEBUG_RAM_END - DEBUG_RAM, " bytes"

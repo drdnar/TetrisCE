@@ -42,7 +42,13 @@ debug_CmdStart:
 ; Display command prompt
 	ld	hl, debug_prompt
 	call	debug_PutS
-	call	debug_GetKeyShifts
+_:	call	debug_GetKeyAscii
+	bit	7, a
+	jr	nz, +_
+	call	debug_PutC
+	jr	-_
+_:	cp	skClear | 80h
+	jr	nz, debug_CmdStart
 	call	debug_Exit
 	jr	debug_CmdStart
 
