@@ -25,10 +25,14 @@ debug_MaxBp			.equ	32
 debug_EditStart			.equ	0
 debug_EditEnd			.equ	debug_EditStart + 3
 debug_EditPtr			.equ	debug_EditEnd + 3
-debug_EditBottom		.equ	debug_EditPtr + 3
-debug_EditY			.equ	EditBottom + 3
+debug_EditBottom		.equ	debug_EditPtr + 3	; Points to zero byte
+debug_EditStartY		.equ	EditBottom + 3
+debug_EditStartX		.equ	debug_EditStartY + 1
+debug_EditTemp1			.equ	debug_EditStartX + 1
+debug_EditY			.equ	debug_EditTemp1 + 1
 debug_EditX			.equ	debug_EditY + 1
-debug_EditSize			.equ	debug_EditX + 2
+debug_EditTemp2			.equ	debug_EditX + 1
+debug_EditSize			.equ	debug_EditTemp2 + 1
 ; Cursor flags
 debug_Cursor2nd			.equ	0
 debug_Cursor2ndM		.equ	01h

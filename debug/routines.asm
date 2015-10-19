@@ -115,3 +115,41 @@ _:	cp	(hl)
 _:	ld	a, (hl)
 	or	a
 	ret
+
+
+;------ MapJumpTable -----------------------------------------------------------
+debug_MapJumpTable:
+; Maps an input in A to a call to an output function.
+; Inputs:
+;  - A: Input value
+;  - HL: Pointer to mapping table of form
+;     .db numberOfEntries
+;     .db inputValue1
+;     .dl function1
+;     .db inputValue2
+;     .dl function2
+;     &c.
+; Outputs:
+;  - Returns to caller if no match found
+;  - If match found,
+;     - A: Input value
+;     - B: Reverse index number of mapping entry (e.g. in 7-entry table, first
+;          is 7, second is 6, &c., last is 1, 0 means not found, or first in 256
+;          entry table)
+; Destroys:
+;  - HL
+	ld	b, (hl)
+	inc	hl
+_:	cp	(hl)
+	inc	hl
+	jr	z, +_
+	inc	hl
+	inc	hl
+	inc	hl
+	djnz	-_
+	ret
+_:	ld	hl, (hl)
+	inc	sp
+	inc	sp
+	inc	sp
+	jp	(hl)

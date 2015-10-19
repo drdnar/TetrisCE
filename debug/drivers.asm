@@ -406,8 +406,33 @@ debug_HomeUp:
 	ret
 
 
+;------ CursorLeft -------------------------------------------------------------
+debug_CursorLeft:
+; Moves the cursor left.
+; Inputs:
+;  - None
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - AF
+	ld	a, (debug_CurCol)
+	dec	a
+	ld	(debug_CurCol), a
+	ret	p
+	ld	a, debug_Cols - 1
+	ld	(debug_CurCol), a
+	ld	a, (debug_CurRow)
+	dec	a
+	ld	(debug_CurRow), a
+	ret	p
+	ld	a, debug_Rows - 1
+	ld	(debug_CurRow), a
+	ret
+
+
 ;------ AdvanceCursor ----------------------------------------------------------
 debug_AdvanceCursor:
+debug_CursorRight:
 ; Moves the cursor right.
 ; Inputs:
 ;  - None
