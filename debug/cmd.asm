@@ -159,9 +159,21 @@ debug_EditResume:
 ; Destroys:
 ;  - AF, BC, DE, HL, IX
 debug_editLoop:
+	
 	; Display edit buffer variables?
-
-
+	ld	hl, 10
+	ld	(debug_CurRow), hl
+	lea	ix, iy + 0
+	ld	b, 6
+_:	ld	hl, (ix)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	lea	ix, ix + 3
+	djnz	-_
+	
+	; Actual edit loop stuff
 	ld	hl, (iy + debug_EditY)
 	ld	(debug_CurRow), hl
 	call	debug_GetKeyAscii
@@ -399,4 +411,3 @@ debug_EditScrollUp:
 ;  - Documented effect(s)
 ; Destroys:
 ;  - AF, BC, DE, HL, IX
-
