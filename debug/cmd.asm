@@ -40,6 +40,7 @@ debug_CmdStart:
 ; TODO: Redraw output buffer
 	call	debug_ClearLcd
 	call	debug_HomeUp
+	
 ; Display command prompt
 	ld	hl, debug_prompt
 	call	debug_PutS
@@ -124,6 +125,60 @@ debug_EditShowBuffer:
 	ret
 
 
+	
+	
+debug_ShowEditBufferVars:
+	ld	hl, (debug_CurRow)
+	push	hl
+	; Display edit buffer variables?
+	ld	hl, 10
+	ld	(debug_CurRow), hl
+;	lea	ix, iy + 0
+;	ld	b, 6
+;_:	ld	hl, (ix)
+;	call	debug_DispUhl
+;	ld	a, ' '
+;	call	debug_PutC
+;	call	debug_PutC
+;	lea	ix, ix + 3
+;	djnz	-_
+	
+	ld	hl, (iy + 0)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + 3)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + 6)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + 9)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + 12)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + 15)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+;	call	debug_GetKey
+	pop	hl
+	ld	(debug_CurRow), hl
+	ret
+	
+	
 ;------ EditBegin --------------------------------------------------------------
 debug_EditBegin:
 ; Enters the edit buffer.  Anything in the edit buffer will be displayed
@@ -160,34 +215,47 @@ debug_EditResume:
 ;  - AF, BC, DE, HL, IX
 debug_editLoop:
 	
-	; Display edit buffer variables?
-	ld	hl, 10
-	ld	(debug_CurRow), hl
-	lea	ix, iy + 0
-	ld	b, 6
-_:	ld	hl, (ix)
-	call	debug_DispUhl
-	ld	a, ' '
-	call	debug_PutC
-	call	debug_PutC
-	lea	ix, ix + 3
-	djnz	-_
+	call	debug_ShowEditBufferVars
+	
 	
 	; Actual edit loop stuff
 	ld	hl, (iy + debug_EditY)
 	ld	(debug_CurRow), hl
 	call	debug_GetKeyAscii
+	; Was an actual character typed?
 	bit	7, a
 	jr	nz, debug_editLoopNonAscii
+	; Check if we're in insert or overstrike mode
 	ld	hl, debug_CursorFlags
 	bit	debug_CursorInsert, (hl)
 	jr	nz, +_
+	; Overstrike
+	ld	hl, (iy + debug_EditPtr)
+	push	hl
+	ld	hl, (iy + debug_EditY)
+	push	hl
 	call	debug_EditOverwriteByte
+	pop	hl
+	ld	(debug_CurRow), hl
+	pop	hl
+	; If the character was not put into the buffer, do not display
+	jr	c, debug_editLoop
+	ld	a, (hl)
+	call	PutC
 	jr	debug_editLoop
-_:	call	debug_EditInsertByte
+_:	; Insert
+	ld	hl, (iy + debug_EditPtr)
+	push	hl
+	ld	hl, (iy + debug_EditY)
+	push	hl
+	call	debug_EditInsertByte
+	pop	hl
+	ld	(debug_CurRow), hl
+	pop	hl
+	call	debug_PutS
 	jr	debug_editLoop
 debug_editLoopNonAscii:
-	and	80h
+	and	7Fh
 	ld	hl, debug_editLoopKeyTable
 	call	debug_MapJumpTable
 	ret
@@ -199,6 +267,16 @@ debug_editLoopKeyTable:
 	.dl	debug_editLoopClear
 	.db	skDel
 	.dl	debug_editLoopDelete
+	.db	skLeft
+	.dl	debug_editLoopLeft
+	.db	skRight
+	.dl	debug_editLoopRight
+	.db	skLeft | 40h
+	.dl	debug_editLoopHome
+	.db	skRight | 40h
+	.dl	debug_editLoopEnd
+	.db	skGraph
+	.dl	debug_editLoopRedraw
 debug_editLoopKeyTableEnd:
 debug_editLoopBackspace:
 	call	debug_EditCursorLeft
@@ -209,14 +287,14 @@ debug_editLoopBackspace:
 	call	debug_PutS
 	ld	a, ' '
 	call	debug_PutC
-	jr	debug_editLoop
+	jp	debug_editLoop
 
 debug_editLoopClear:
 	ld	hl, (iy + debug_EditBottom)
 	ld	de, (iy + debug_EditStart)
 	or	a
 	sbc	hl, de
-	jr	z, debug_editLoop
+	jp	z, debug_editLoop
 	ld	de, (iy + debug_EditStartY)
 	ld	(debug_CurRow), de
 	ld	a, ' '
@@ -226,6 +304,7 @@ _:	call	debug_PutC
 	dec	hl
 	sbc	hl, de
 	jr	nz, -_
+	call	debug_EditClear
 	jp	debug_editLoop
 	
 debug_editLoopDelete:
@@ -237,6 +316,42 @@ debug_editLoopDelete:
 	call	debug_PutS
 	ld	a, ' '
 	call	debug_PutC
+	jp	debug_editLoop
+
+debug_editLoopLeft:
+	call	debug_EditCursorLeft
+	jp	debug_editLoop
+
+debug_editLoopRight:
+	call	debug_EditCursorRight
+	jp	debug_editLoop
+
+debug_editLoopHome:
+	ld	hl, (iy + debug_EditStartY)
+	ld	(iy + debug_EditY), hl
+	ld	hl, (iy + debug_EditStart)
+	ld	(iy + debug_EditPtr), hl
+	jp	debug_editLoop
+
+debug_editLoopEnd:
+	ld	hl, (iy + debug_EditStartY)
+	ld	(debug_CurRow), hl
+	ld	hl, (iy + debug_EditStart)
+	call	debug_PutS
+	dec	hl
+	ld	(iy + debug_EditPtr), hl
+	ld	hl, (debug_CurRow)
+	ld	(iy + debug_EditY), hl
+	jp	debug_editLoop
+
+debug_editLoopRedraw:
+	ld	hl, (iy + debug_EditStartY)
+	ld	(debug_CurRow), hl
+	ld	a, 1
+	ld	b, 128
+_:	call	debug_PutC
+	djnz	-_
+	call	debug_EditShowBuffer
 	jp	debug_editLoop
 
 
@@ -384,19 +499,22 @@ debug_EditDeleteByte:
 	ld	de, (iy + debug_EditPtr)
 	or	a
 	sbc	hl, de
+	; Check for problems
+	ret	z	; Can't move zero bytes. . . .
+	ccf
+	ret	nc	; Bad things will happen if you try to move negative bytes
 	push	hl
 	pop	bc
-	ld	de, (iy + debug_EditBottom)
-	dec	de
-	ld	(iy + debug_EditBottom), de
+	; Decrement input size
+	add	hl, de
+	dec	hl
+	ld	(iy + debug_EditBottom), hl
+	; Get pointers
 	push	de
 	pop	hl
 	inc	hl
-	; LDDR data to make room
-	lddr
-	; Write byte
-	ld	hl, (iy + debug_EditPtr)
-	ld	(hl), a
+	; LDIR data to make room
+	ldir
 	scf
 	ret
 

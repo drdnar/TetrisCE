@@ -26,7 +26,7 @@ debug_EditStart			.equ	0
 debug_EditEnd			.equ	debug_EditStart + 3
 debug_EditPtr			.equ	debug_EditEnd + 3
 debug_EditBottom		.equ	debug_EditPtr + 3	; Points to zero byte
-debug_EditStartY		.equ	EditBottom + 3
+debug_EditStartY		.equ	debug_EditBottom + 3
 debug_EditStartX		.equ	debug_EditStartY + 1
 debug_EditTemp1			.equ	debug_EditStartX + 1
 debug_EditY			.equ	debug_EditTemp1 + 1
