@@ -125,60 +125,6 @@ debug_EditShowBuffer:
 	ret
 
 
-	
-	
-debug_ShowEditBufferVars:
-	ld	hl, (debug_CurRow)
-	push	hl
-	; Display edit buffer variables?
-	ld	hl, 10
-	ld	(debug_CurRow), hl
-;	lea	ix, iy + 0
-;	ld	b, 6
-;_:	ld	hl, (ix)
-;	call	debug_DispUhl
-;	ld	a, ' '
-;	call	debug_PutC
-;	call	debug_PutC
-;	lea	ix, ix + 3
-;	djnz	-_
-	
-	ld	hl, (iy + 0)
-	call	debug_DispUhl
-	ld	a, ' '
-	call	debug_PutC
-	call	debug_PutC
-	ld	hl, (iy + 3)
-	call	debug_DispUhl
-	ld	a, ' '
-	call	debug_PutC
-	call	debug_PutC
-	ld	hl, (iy + 6)
-	call	debug_DispUhl
-	ld	a, ' '
-	call	debug_PutC
-	call	debug_PutC
-	ld	hl, (iy + 9)
-	call	debug_DispUhl
-	ld	a, ' '
-	call	debug_PutC
-	call	debug_PutC
-	ld	hl, (iy + 12)
-	call	debug_DispUhl
-	ld	a, ' '
-	call	debug_PutC
-	call	debug_PutC
-	ld	hl, (iy + 15)
-	call	debug_DispUhl
-	ld	a, ' '
-	call	debug_PutC
-	call	debug_PutC
-;	call	debug_GetKey
-	pop	hl
-	ld	(debug_CurRow), hl
-	ret
-	
-	
 ;------ EditBegin --------------------------------------------------------------
 debug_EditBegin:
 ; Enters the edit buffer.  Anything in the edit buffer will be displayed
@@ -190,12 +136,13 @@ debug_EditBegin:
 ;  - Documented effect(s)
 ; Destroys:
 ;  - AF, BC, DE, HL, IX
+	ld	hl, (iy + debug_EditEnd)
+	ld	(hl), 0
 	ld	hl, (debug_CurRow)
 	ld	(iy + debug_EditStartY), hl
 	ld	hl, (iy + debug_EditStart)
 	call	debug_PutS
 	dec	hl
-	; TODO: Check that this is a legal end-of-string position
 	ld	(iy + debug_EditBottom), hl
 	ld	(iy + debug_EditPtr), hl
 	ld	hl, (debug_CurRow)
@@ -214,10 +161,9 @@ debug_EditResume:
 ; Destroys:
 ;  - AF, BC, DE, HL, IX
 debug_editLoop:
-	
+#ifdef	NEVER
 	call	debug_ShowEditBufferVars
-	
-	
+#endif
 	; Actual edit loop stuff
 	ld	hl, (iy + debug_EditY)
 	ld	(debug_CurRow), hl
@@ -230,29 +176,23 @@ debug_editLoop:
 	bit	debug_CursorInsert, (hl)
 	jr	nz, +_
 	; Overstrike
-	ld	hl, (iy + debug_EditPtr)
-	push	hl
-	ld	hl, (iy + debug_EditY)
-	push	hl
 	call	debug_EditOverwriteByte
-	pop	hl
-	ld	(debug_CurRow), hl
-	pop	hl
 	; If the character was not put into the buffer, do not display
 	jr	c, debug_editLoop
+;	ld	hl, (iy + debug_EditY)
+;	ld	(debug_CurRow), hl
+	ld	hl, (iy + debug_EditPtr)
 	ld	a, (hl)
-	call	PutC
+	call	debug_PutC
+	call	debug_EditCursorRight
 	jr	debug_editLoop
 _:	; Insert
-	ld	hl, (iy + debug_EditPtr)
-	push	hl
-	ld	hl, (iy + debug_EditY)
-	push	hl
 	call	debug_EditInsertByte
-	pop	hl
-	ld	(debug_CurRow), hl
-	pop	hl
+;	ld	hl, (iy + debug_EditY)
+;	ld	(debug_CurRow), hl
+	ld	hl, (iy + debug_EditPtr)
 	call	debug_PutS
+	call	debug_EditCursorRight
 	jr	debug_editLoop
 debug_editLoopNonAscii:
 	and	7Fh
@@ -275,8 +215,8 @@ debug_editLoopKeyTable:
 	.dl	debug_editLoopHome
 	.db	skRight | 40h
 	.dl	debug_editLoopEnd
-	.db	skGraph
-	.dl	debug_editLoopRedraw
+;	.db	skGraph
+;	.dl	debug_editLoopRedraw
 debug_editLoopKeyTableEnd:
 debug_editLoopBackspace:
 	call	debug_EditCursorLeft
@@ -344,15 +284,15 @@ debug_editLoopEnd:
 	ld	(iy + debug_EditY), hl
 	jp	debug_editLoop
 
-debug_editLoopRedraw:
-	ld	hl, (iy + debug_EditStartY)
-	ld	(debug_CurRow), hl
-	ld	a, 1
-	ld	b, 128
-_:	call	debug_PutC
-	djnz	-_
-	call	debug_EditShowBuffer
-	jp	debug_editLoop
+;debug_editLoopRedraw:
+;	ld	hl, (iy + debug_EditStartY)
+;	ld	(debug_CurRow), hl
+;	ld	a, 1
+;	ld	b, 128
+;_:	call	debug_PutC
+;	djnz	-_
+;	call	debug_EditShowBuffer
+;	jp	debug_editLoop
 
 
 ;------ EditCursorLeft ---------------------------------------------------------
@@ -415,7 +355,7 @@ debug_EditCursorRight:
 
 ;------ EditOverwriteByte ------------------------------------------------------
 debug_EditOverwriteByte:
-; Writes one byte to the current cursor location.  The cursor is advanced.
+; Writes one byte to the current cursor location.
 ; If the cursor is at the end of the buffer, the byte is appended.
 ; If the buffer is already full, nothing happens.
 ; Inputs:
@@ -433,14 +373,13 @@ debug_EditOverwriteByte:
 	ret	c
 	jr	z, debug_EditInsertByte
 	ld	(de), a
-	call	debug_EditCursorRight
 	or	a
 	ret
 
 
 ;------ EditInsertByte ---------------------------------------------------------
 debug_EditInsertByte:
-; Inserts one byte at the current cursor location.  The cursor is advanced.
+; Inserts one byte at the current cursor location.
 ; Inputs:
 ;  - A: Byte to write
 ;  - IY: Pointer to edit buffer
@@ -473,14 +412,13 @@ debug_EditInsertByte:
 	; Write byte
 	ld	hl, (iy + debug_EditPtr)
 	ld	(hl), a
-	call	debug_EditCursorRight
 	or	a
 	ret
 
 
 ;------ EditDeleteByte ---------------------------------------------------------
 debug_EditDeleteByte:
-; Deletes one byte at the current cursor location.  The cursor does not move.
+; Deletes one byte at the current cursor location.
 ; Input:
 ;  - IY: Pointer to edit buffer
 ; Output:
@@ -517,6 +455,69 @@ debug_EditDeleteByte:
 	ldir
 	scf
 	ret
+
+
+#ifdef	NEVER
+;------ ShowEditBufferVars -----------------------------------------------------
+debug_ShowEditBufferVars:
+; Debugging function.
+; Input:
+;  - IY: Pointer to edit buffer
+; Output:
+;  - Documented effect(s)
+;  - NC if buffer is empty, C if buffer is not yet empty
+; Destroys:
+;  - AF, BC, DE, HL, IX
+	ld	hl, (debug_CurRow)
+	push	hl
+	; Display edit buffer variables?
+	ld	hl, 10
+	ld	(debug_CurRow), hl
+;	lea	ix, iy + 0
+;	ld	b, 6
+;_:	ld	hl, (ix)
+;	call	debug_DispUhl
+;	ld	a, ' '
+;	call	debug_PutC
+;	call	debug_PutC
+;	lea	ix, ix + 3
+;	djnz	-_
+	
+	ld	hl, (iy + 0)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + 3)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + 6)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + 9)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + 12)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + 15)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+;	call	debug_GetKey
+	pop	hl
+	ld	(debug_CurRow), hl
+	ret
+#endif
 
 
 ;------ EditScrollUp -----------------------------------------------------------
