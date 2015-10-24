@@ -16,6 +16,7 @@ debug_CmdInitialize:
 	ldir
 	ret
 debug_Cmd0Clear:
+	.dl	0	; debug_EditFlags
 	.dl	debug_EditBuffer1	; debug_EditStart
 	.dl	debug_EditBuffer1 + debug_EditBufferSize - 1	; debug_EditEnd
 	.dl	debug_EditBuffer1	; debug_EditPtr
@@ -23,6 +24,8 @@ debug_Cmd0Clear:
 	.dl	0	; debug_EditStartY, debug_EditStartX
 	.dl	0	; debug_EditY, debug_EditX
 	.db	0	; debug_CmdFlags
+	.db	0	; debug_CmdScBufLock
+	.db	0	; unused
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufStart
 	.dl	debug_OutputBuffer1 + debug_OutputBufferSize	; debug_CmdOutBufEnd
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufTop
@@ -77,14 +80,166 @@ debug_CmdScrollBufferInitialize:
 	ret
 
 
+
+debug_ScBufClear:
+; Clears the scroll buffer
+; Input:
+;  - IY: Pointer to scroll buffer struct
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - HL
+	ld	hl, (iy + debug_CmdScBufStart)
+	ld	(iy + debug_CmdScBufTop), hl
+	ld	(iy + debug_CmdScBufBottom), hl
+	ret
+
+
+;------ ScBufForward -----------------------------------------------------------
+debug_ScBufForward:
+; Increments a pointer in the scroll buffer.
+; Inputs:
+;  - HL: Pointer
+;  - IY: Pointer to scroll buffer struct
+; Outputs:
+;  - HL: Pointer
+;  - Z if already at end of buffer, NZ if still more buffer
+; Destroys:
+;  - Flags
+	push	de
+	inc	hl
+	; Check for wrapping
+	ld	de, (iy + debug_CmdScBufEnd)
+	or	a
+	sbc	hl, de
+	add	hl, de
+	ld	de, (iy + debug_CmdScBufBottom)
+	jr	c, +_
+	; Wrapped
+	ld	hl, (iy + debug_CmdScBufStart)
+	or	a
+	sbc	hl, de
+	pop	de
+	ret	nz
+	ld	hl, (iy + debug_CmdScBufEnd)
+	dec	hl
+	ret
+_:	; Not wrapped
+	or	a
+	sbc	hl, de
+	pop	de
+	ret	nz
+	dec	hl
+	ret
+
+
+;------ ScBufBackward ----------------------------------------------------------
+debug_ScBufBackward:
+; Decrements a pointer in the scroll buffer.
+; Inputs:
+;  - HL: Pointer
+;  - IY: Pointer to scroll buffer struct
+; Outputs:
+;  - HL: Pointer
+;  - Z if already at start of buffer, NZ if still more
+; Destroys:
+;  - Flags
+	push	de
+	; Check for wrapping
+	ld	de, (iy + debug_CmdScBufStart)
+	inc	de
+	or	a
+	sbc	hl, de
+	add	hl, de
+	ld	de, (iy + debug_CmdScBufTop)
+	jr	nc, +_
+	; Wrapped
+	ret	nz	; Error condition
+	or	a
+	sbc	hl, de
+	pop	de
+	ret	z
+	ld	hl, (iy + debug_CmdScBufEnd)
+	dec	hl
+	ret
+_:	; Not wrapped
+	or	a
+	sbc	hl, de
+	pop	de
+	dec	hl
+	ret	nz
+	inc	hl
+	ret
+
+
+;------ ScBufNextLine ----------------------------------------------------------
+debug_ScBufNextLine:
+; Seeks to the next line of the scroll buffer, given the start of a line.
+; Inputs:
+;  - HL: Pointer to current line
+;  - IY: Pointer to scroll buffer struct
+; Outputs:
+;  - HL: Pointer to start of next line
+;  - Z if end-of-buffer before next new line
+; Destroys:
+;  - AF, B
+	ld	b, debug_Cols
+_:	call	debug_ScBufForward
+	ret	z
+	ld	a, (hl)
+	cp	debug_chNewLine
+	jr	z, +_
+	djnz	-_
+	ret
+_:	call	debug_ScBufForward
+	xor	a
+	inc	a
+	ret
+
+
+;------ ScBufPrevLine ----------------------------------------------------------
+debug_ScBufPrevLine:
+; Seeks to the previous line of the scroll buffer, given the start of a line.
+; Inputs:
+;  - HL: Pointer to current line
+;  - IY: Pointer to scroll buffer struct
+; Outputs:
+;  - HL: Pointer to start of next line
+;  - TODO: Flag to indicate if no more buffer
+; Destroys:
+;  - AF, B
+	call	debug_ScBufBackward
+	ret	z	
+	ld	b, debug_Cols - 1
+_:	call	debug_ScBufBackward
+	ret	z
+	ld	a, (hl)
+	cp	debug_chNewLine
+	jr	z, +_
+	djnz	-_
+	ret
+_:	call	debug_ScBufForward
+	xor	a
+	inc	a
+	ret
+
+
+;------ PrintChar --------------------------------------------------------------
+debug_PrintChar:
+; Prints a single glyph to the current scroll buffer.
+
+
+
 ;------ PrintStr ---------------------------------------------------------------
 debug_PrintStr:
 	call	debug_PutS
 	ret
 
 
+
+
 ;===============================================================================
-;====== Edit Buffer ===========================================================++=
+;====== Edit Buffer ============================================================
 ;===============================================================================
 
 ;------ EditClear --------------------------------------------------------------

@@ -22,7 +22,10 @@ debug_OutputBufferSize		.equ	2048
 debug_BpListSize		.equ	512
 debug_MaxBp			.equ	32
 ; Debug edit buffer struct
-debug_EditStart			.equ	0
+debug_EditHeight		.equ	0
+debug_EditWidth			.equ	debug_EditHeight + 1
+debug_EditFlags			.equ	debug_EditWidth + 1
+debug_EditStart			.equ	debug_EditFlags + 1
 debug_EditEnd			.equ	debug_EditStart + 3
 debug_EditPtr			.equ	debug_EditEnd + 3
 debug_EditBottom		.equ	debug_EditPtr + 3	; Points to zero byte
@@ -33,6 +36,9 @@ debug_EditY			.equ	debug_EditTemp1 + 1
 debug_EditX			.equ	debug_EditY + 1
 debug_EditTemp2			.equ	debug_EditX + 1
 debug_EditSize			.equ	debug_EditTemp2 + 1
+; Debug edit buffer flags
+debug_EditFlagAsyncExitReq	.equ	7
+debug_EditFlagBoxedInput	.equ	6
 ; Cursor flags
 debug_Cursor2nd			.equ	0
 debug_Cursor2ndM		.equ	01h
@@ -52,19 +58,23 @@ debug_CursorActiveM		.equ	80h
 ; Since every command window also has an edit buffer, why not combine the two structs?
 ; Debug Command struct
 debug_CmdFlags			.equ	debug_EditSize
+debug_CmdScBufLock		.equ	debug_CmdFlags + 1
+debug_CmdUnused			.equ	debug_CmdScBufLock + 1
 ; Start = Byte 0 of buffer; End = last byte of buffer plus 1.
 ; Top = Ptr to first byte to read first entry from.
 ; Bottom = Ptr to where to write next entry to.
 ; The print and history buffers are circular.
-debug_CmdOutBufStart		.equ	debug_CmdFlags + 1
-debug_CmdOutBufEnd		.equ	debug_CmdOutBufStart + 3
-debug_CmdOutBufTop		.equ	debug_CmdOutBufEnd + 3
-debug_CmdOutBufBottom		.equ	debug_CmdOutBufTop + 3
-debug_CmdHistStart		.equ	debug_CmdOutBufBottom + 3
+debug_CmdScBufStart		.equ	debug_CmdUnused + 1
+debug_CmdScBufEnd		.equ	debug_CmdScBufStart + 3
+debug_CmdScBufTop		.equ	debug_CmdScBufEnd + 3
+debug_CmdScBufBottom		.equ	debug_CmdScBufTop + 3
+debug_CmdHistStart		.equ	debug_CmdScBufBottom + 3
 debug_CmdHistEnd		.equ	debug_CmdHistStart + 3
 debug_CmdHistTop		.equ	debug_CmdHistEnd + 3
 debug_CmdHistBottom		.equ	debug_CmdHistTop + 3
 debug_CmdSize			.equ	debug_CmdHistBottom + 3
+; Command flags
+debug_CmdFlagScBufWriteNotify	.equ	0
 
 ; For some reason, this must be a multiple of 8.
 
