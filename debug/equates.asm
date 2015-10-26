@@ -50,6 +50,7 @@ debug_CursorLwrAlpha		.equ	3
 debug_CursorLwrAlphaM		.equ	08h
 debug_CursorOther		.equ	4
 debug_CursorOtherM		.equ	10h
+debug_CursorInverse		.equ	debug_CursorOtherM
 debug_CursorFull		.equ	1 + debug_CursorOtherM
 debug_CursorBox			.equ	2 + debug_CursorOtherM
 debug_CursorLine		.equ	3 + debug_CursorOtherM
@@ -75,10 +76,15 @@ debug_CmdHistBottom		.equ	debug_CmdHistTop + 3
 debug_CmdSize			.equ	debug_CmdHistBottom + 3
 ; Command flags
 debug_CmdFlagScBufWriteNotify	.equ	0
+debug_CmdFlagScBufEraseNotify	.equ	1
 
 ; For some reason, this must be a multiple of 8.
 
+#if (DEBUG_RAM & 7) == 0
+debug_Vram			.equ	DEBUG_RAM
+#else
 debug_Vram			.equ	DEBUG_RAM + (8 - (DEBUG_RAM & 7))
+#endif
 
 debug_VramSize			.equ	(320 * 240) / 8
 debug_Stack			.equ	debug_Vram + debug_VramSize
@@ -113,11 +119,11 @@ debug_EndOfStaticVars		.equ	debug_Cmd1 + debug_CmdSize
 ;debug_TextBuffer		.equ	debug_EndOfStaticVars
 ;debug_EditBuffer1		.equ	debug_textBuffer + (debug_Cols * debug_Rows)
 debug_EditBuffer1		.equ	debug_EndOfStaticVars
-debug_EditBuffer2		.equ	debug_EditBuffer1 + debug_EditBufferSize
-debug_OutputBuffer1		.equ	debug_EditBuffer2 + debug_EditBufferSize
-debug_OutputBuffer2		.equ	debug_OutputBuffer1 + debug_OutputBufferSize
-debug_HistoryBuffer1		.equ	debug_OutputBuffer2 + debug_OutputBufferSize
-debug_HistoryBuffer2		.equ	debug_HistoryBuffer1 + debug_HistoryBufferSize
+debug_OutputBuffer1		.equ	debug_EditBuffer1 + debug_EditBufferSize
+debug_HistoryBuffer1		.equ	debug_OutputBuffer1 + debug_OutputBufferSize
+debug_EditBuffer2		.equ	debug_HistoryBuffer1 + debug_HistoryBufferSize
+debug_OutputBuffer2		.equ	debug_EditBuffer2 + debug_EditBufferSize
+debug_HistoryBuffer2		.equ	debug_OutputBuffer2 + debug_OutputBufferSize
 debug_BpList			.equ	debug_HistoryBuffer2 + debug_HistoryBufferSize
 
 DEBUG_RAM_END			.equ	debug_BpList + debug_BpListSize

@@ -176,16 +176,27 @@ _:	bit	debug_CursorAlpha, a
 debug_cursorOnOther:
 	ld	de, +_
 	and	03h
+	jr	z, debug_cursorOnInverse
 	sbc	hl, hl
 	ld	l, a
 	add	hl, de
 	ld	b, (hl)
 	jr	debug_cursorOnHaveCursor
 _:	.db	0, 1, 16, 2
+debug_cursorOnInverse:
+	ld	a, (debug_TextFlags)
+	push	af
+	or	debug_TextInverseM
+	ld	(debug_TextFlags), a
+	ld	ix, debug_CursorBitmapSave
+	call	debug_PutMapRaw
+	pop	af
+	ld	(debug_TextFlags), a
+	jr	+_
 debug_cursorOnHaveCursor:
 	ld	a, b
 	call	debug_PutMap
-	ld	hl, debug_CursorTime
+_:	ld	hl, debug_CursorTime
 	ld	(debug_CursorTimer), hl
 	ret
 
@@ -214,6 +225,30 @@ debug_CursorOff:
 	ld	(debug_TextFlags), a
 	ld	hl, debug_CursorTime
 	ld	(debug_CursorTimer), hl
+	ret
+
+
+;------ GetKey2nd --------------------------------------------------------------
+_:	ld	a, (debug_CursorFlags)
+	xor	debug_Cursor2ndM
+	ld	(debug_CursorFlags), a
+debug_GetKey2nd:
+; Gets a key, but also processes 2nd.
+; Input:
+;  - Cursor type
+; Output:
+;  - A: Key code, bit 6 set if 2nd was pressed
+; Destroys:
+;  - Flags
+	call	debug_GetKeyBlinky
+	cp	sk2nd
+	jr	z, -_
+	push	hl
+	ld	hl, (debug_CursorFlags)
+	bit	debug_Cursor2nd, (hl)
+	pop	hl
+	ret	z
+	or	40h
 	ret
 
 

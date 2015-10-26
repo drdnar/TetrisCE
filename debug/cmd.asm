@@ -81,6 +81,7 @@ debug_CmdScrollBufferInitialize:
 
 
 
+;------ ScBufClear -------------------------------------------------------------
 debug_ScBufClear:
 ; Clears the scroll buffer
 ; Input:
@@ -205,7 +206,7 @@ debug_ScBufPrevLine:
 ;  - IY: Pointer to scroll buffer struct
 ; Outputs:
 ;  - HL: Pointer to start of next line
-;  - TODO: Flag to indicate if no more buffer
+;  - Z if seeked to start of buffer and cannot go further back
 ; Destroys:
 ;  - AF, B
 	call	debug_ScBufBackward
@@ -224,10 +225,46 @@ _:	call	debug_ScBufForward
 	ret
 
 
+;------ ScBufFlushALine --------------------------------------------------------
+debug_ScBufFlushALine:
+; Removes the top-most line from the scroll buffer.
+; Input:
+;  - IY: Pointer to scroll buffer struct
+; Output
+;  - Text removed from buffer
+; Destroys:
+;  - AF, HL
+	ld	hl, (iy + debug_CmdScBufTop)
+	call	debug_ScBufNextLine
+	ld	(iy + debug_CmdScBufTop), hl
+	set	debug_CmdFlagScBufEraseNotify, (iy + debug_CmdFlags)
+	ret
+
+
 ;------ PrintChar --------------------------------------------------------------
 debug_PrintChar:
 ; Prints a single glyph to the current scroll buffer.
-
+;  - Carry if cannot print due to buffer locked
+	push	hl
+	push	de
+	push	bc
+	ld	c, a
+	xor	a
+	sub	(iy + debug_CmdScBufLock)
+	jp	m, debug_printCharLocked
+	inc	(iy + debug_CmdScBufLock)
+	jr	nz, debug_printCharLocked
+	
+	
+	
+	ld	(iy + debug_CmdScBufLock), 255
+	set	debug_CmdFlagScBufWriteNotify, (iy + debug_CmdFlags)
+	or	a
+debug_printCharLocked:
+	pop	bc
+	pop	de
+	pop	hl
+	ret
 
 
 ;------ PrintStr ---------------------------------------------------------------
@@ -235,7 +272,24 @@ debug_PrintStr:
 	call	debug_PutS
 	ret
 
+debug_PrintUhl:
 
+debug_PrintUhlDec:
+
+debug_PrintByte:
+
+
+;------ LogChar ----------------------------------------------------------------
+debug_LogChar:
+; Logs a single character to the current debug log scroll buffer.
+
+debug_LogStr:
+
+debug_LogUhl:
+
+debug_LogUhlDec:
+
+debug_LogByte:
 
 
 ;===============================================================================
