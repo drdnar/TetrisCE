@@ -25,7 +25,7 @@ debug_Cmd0Clear:
 	.dl	0	; debug_EditY, debug_EditX
 	.db	0	; debug_CmdFlags
 	.db	0	; debug_CmdScBufLock
-	.db	0	; unused
+	.db	3	; debug_CmdScBufBottomLine
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufStart
 	.dl	debug_OutputBuffer1 + debug_OutputBufferSize	; debug_CmdOutBufEnd
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufTop
@@ -241,6 +241,7 @@ debug_ScBufFlushALine:
 	ret
 
 
+;====== API for Actual Texty Stuff =============================================
 ;------ PrintChar --------------------------------------------------------------
 debug_PrintChar:
 ; Prints a single glyph to the current scroll buffer.
@@ -290,6 +291,85 @@ debug_LogUhl:
 debug_LogUhlDec:
 
 debug_LogByte:
+
+
+;====== Display Routines =======================================================
+;------ ScBufShowBuffer --------------------------------------------------------
+debug_ScBufShowBuffer:
+; Shows the buffer starting at a given position in the scroll buffer, and prints
+; until CmdScBufBottom or it runs out of buffer.
+; Input:
+;  - HL: Start position
+;  - IY: Pointer to scroll buffer struct
+; Output:
+;  - Documented effect(s)
+; Destroys:
+;  - AF, BC, DE, HL
+;  - Cursor positon
+	push	hl
+	call	debug_ScBufPrintVars
+	ld	hl, 0
+	ld	(debug_CurRow), hl
+	ld	hl, (iy + debug_CmdScBufStart)
+	ld	de, (iy + debug_CmdScBufEnd)
+	sbc	hl, de
+	pop	hl
+	jr	z, debug_scBufShowBufferClearEndOfWindow
+debug_scBufShowBufferLoop:
+	ld	a, (debug_CurRow)
+	cp	(iy + debug_CmdScBufBottomLine)
+	ret	nc
+	ld	a, (hl)
+	or	a
+	ret	z
+	cp	debug_chNewLine
+	call	z, debug_NewLineClearEol
+	call	debug_ScBufForward
+	jr	nz, debug_scBufShowBufferLoop
+debug_scBufShowBufferClearEndOfWindow:
+	ld	a, (debug_CurRow)
+	cp	(iy + debug_CmdScBufBottomLine)
+	ret	nc
+	call	debug_NewLineClearEol
+	jr	debug_scBufShowBufferClearEndOfWindow
+
+
+;------ ------------------------------------------------------------------------
+debug_ScBufPrintVars:
+	ld	hl, (debug_CurRow)
+	push	hl
+	ld	hl, 12
+	ld	(debug_CurRow), hl
+	ld	a, (iy + debug_CmdFlags)
+	call	debug_Byte
+	ld	a, (iy + debug_CmdScBufLock)
+	call	debug_Byte
+	ld	a, (iy + debug_CmdBottomLine)
+	call	debug_Byte
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + debug_CmdScBufStart)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + debug_CmdScBufEnd)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + debug_CmdScBufTop)
+	call	debug_DispUhl
+	ld	a, ' '
+	call	debug_PutC
+	call	debug_PutC
+	ld	hl, (iy + debug_CmdScBufBottom)
+	call	debug_DispUhl
+	pop	hl
+	ld	(debug_CurRow), hl
+	ret
+
 
 
 ;===============================================================================

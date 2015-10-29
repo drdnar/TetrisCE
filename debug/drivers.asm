@@ -501,6 +501,37 @@ debug_NewLine:
 	ret
 
 
+;------ NewLineClearEol2 -------------------------------------------------------
+; Just like NewLine, but clears until the end of the line, unless you're already
+; at the start of a new line.  Useful for formatting.
+debug_NewLineClearEol2:
+; Inputs:
+;  - None
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - AF
+	ld	a, (debug_CurCol)
+	or	a
+	ret	z
+	; Fall through to NewLineClearEol
+;------ NewLineClearEol --------------------------------------------------------
+debug_NewLineClearEol:
+; Just like NewLine, but clears until the end of the line.
+; Inputs:
+;  - None
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - AF
+	ld	a, ' '
+	call	debug_PutC
+	ld	a, (debug_CurCol)
+	or	a
+	ret	z
+	jr	debug_NewLineClearEol
+
+
 ;------ PutS -------------------------------------------------------------------
 debug_PutS:
 ; Displays a string, processes new line, nothing else.

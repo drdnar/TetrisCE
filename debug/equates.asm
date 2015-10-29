@@ -60,12 +60,12 @@ debug_CursorActiveM		.equ	80h
 ; Debug Command struct
 debug_CmdFlags			.equ	debug_EditSize
 debug_CmdScBufLock		.equ	debug_CmdFlags + 1
-debug_CmdUnused			.equ	debug_CmdScBufLock + 1
+debug_CmdScBufBottomLine	.equ	debug_CmdScBufLock + 1
 ; Start = Byte 0 of buffer; End = last byte of buffer plus 1.
 ; Top = Ptr to first byte to read first entry from.
 ; Bottom = Ptr to where to write next entry to.
 ; The print and history buffers are circular.
-debug_CmdScBufStart		.equ	debug_CmdUnused + 1
+debug_CmdScBufStart		.equ	debug_CmdScBufBottomLine + 1
 debug_CmdScBufEnd		.equ	debug_CmdScBufStart + 3
 debug_CmdScBufTop		.equ	debug_CmdScBufEnd + 3
 debug_CmdScBufBottom		.equ	debug_CmdScBufTop + 3
