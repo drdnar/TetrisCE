@@ -25,9 +25,13 @@ debug_Cmd0Clear:
 	.dl	0	; debug_EditY, debug_EditX
 	.db	0	; debug_CmdFlags
 	.db	0	; debug_CmdScBufLock
-	.db	3	; debug_CmdScBufBottomLine
+	.db	6	; debug_CmdScBufBottomLine
+	.db	0			; debug_CmdScBufRow
+	.db	0			; debug_CmdScBufCol
+	.db	0			; debug_CmdScBufUnused
+	.dl	debug_OutputBuffer1	; debug_CmdScBufTopDisplayLine
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufStart
-	.dl	debug_OutputBuffer1 + debug_OutputBufferSize	; debug_CmdOutBufEnd
+	.dl	debug_OutputBuffer1 + 128;debug_OutputBufferSize	; debug_CmdOutBufEnd
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufTop
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufBottom
 	.dl	debug_HistoryBuffer1	; debug_CmdHistStart
@@ -36,15 +40,69 @@ debug_Cmd0Clear:
 	.dl	debug_HistoryBuffer1	; debug_CmdHistBottom
 
 
+
+
+
+debug_testStuff:
+	.db	6
+	.db	0
+	.db	0
+	.db	0
+	.dl	debug_OutputBuffer1	; debug_CmdScBufTopDisplayLine
+	.dl	debug_OutputBuffer1	; debug_CmdOutBufStart
+	.dl	debug_OutputBuffer1 + 8;debug_OutputBufferSize	; debug_CmdOutBufEnd
+	.dl	debug_OutputBuffer1 + 5	; debug_CmdOutBufTop
+	.dl	debug_OutputBuffer1 + 2	; debug_CmdOutBufBottom
+
+debug_testStr:
+	.db	"I am happy to join with you today in what will go down in history as the greatest demonstration for freedom in the history of our nation. Five score years ago, a great American, in whose symbolic shadow we stand, signed the Emancipation Proclamation. "
+	.db	"This momentous decree came as a great beacon light of hope to millions of Negro slaves who had been seared in the flames of withering injustice. "
+	.db	"It came as a joyous daybreak to end the long night of captivity. But 100 years later, we must face the tragic. . . .", 0
+
 ;------ ------------------------------------------------------------------------
 debug_CmdStart:
 ; Reset stack
 	ld	sp, debug_Stack + debug_StackSize + 1
+; Get reference to starting buffer
+	ld	iy, debug_Cmd0
 ; TODO: Redraw output buffer
 	call	debug_ClearLcd
 	call	debug_HomeUp
 	
 ; Display command prompt
+
+
+
+	call	debug_ScBufClear
+	
+	ld	hl, debug_testStuff
+	lea	de, iy + debug_CmdScBufBottomLine
+	ld	bc, 19
+	ldir
+	ld	hl, debug_testStr
+	ld	de, debug_OutputBuffer1
+	ld	bc, 513
+	ldir
+	
+
+
+debug_TestLoopBlah:
+	
+	ld	hl, 8
+	ld	(debug_CurRow), hl
+	
+	call	debug_GetKeyAscii
+	bit	7, a
+	jr	z, +_
+	call	debug_PrintChar
+	call	debug_ScBufPrintVars
+	jr	debug_TestLoopBlah
+_:	cp	skClear | 80h
+	call	z, debug_Exit
+	
+	jr	debug_TestLoopBlah
+	
+
 	ld	hl, debug_prompt
 	call	debug_PutS
 	
@@ -54,7 +112,7 @@ debug_CmdStart:
 	cp	skMode | 40h
 	call	nz, debug_Exit
 	
-	jr	debug_CmdStart
+	jp	debug_CmdStart
 
 
 _:	call	debug_GetKeyAscii
@@ -63,9 +121,9 @@ _:	call	debug_GetKeyAscii
 	call	debug_PutC
 	jr	-_
 _:	cp	skClear | 80h
-	jr	nz, debug_CmdStart
+	jp	nz, debug_CmdStart
 	call	debug_Exit
-	jr	debug_CmdStart
+	jp	debug_CmdStart
 
 debug_prompt:
 	.db	"> ", 0
@@ -96,6 +154,77 @@ debug_ScBufClear:
 	ret
 
 
+;------ ScBufIsEmpty -----------------------------------------------------------
+debug_ScBufIsEmpty:
+; Tests if the scroll buffer is empty.
+; Input:
+;  - IY: Pointer to scroll buffer struct
+; Output:
+;  - Z if empty, NZ if not empty
+; Destroys:
+;  - Nothing
+	push	hl
+	push	de
+	ld	hl, (iy + debug_CmdScBufTop)
+	ld	de, (iy + debug_CmdScBufBottom)
+	or	a
+	sbc	hl, de
+	pop	de
+	pop	hl
+	ret
+
+
+;------ ScBufIncPtr ------------------------------------------------------------
+debug_ScBufIncPtr:
+; Increments a pointer in the scroll buffer, handling wrapping, but does not
+; check whether the pointer will stay within the buffer data bounds.
+; Inputs:
+;  - HL: Pointer
+;  - IY: Pointer to scroll buffer struct
+; Output:
+;  - HL: Pointer
+; Destroys:
+;  - Nothing
+	push	af
+	push	de
+	inc	hl
+	ld	de, (iy + debug_CmdScBufEnd)
+	or	a
+	sbc	hl, de
+	add	hl, de
+	jr	c, +_
+	ld	hl, (iy + debug_CmdScBufStart)
+_:	pop	de
+	pop	af
+	ret
+
+
+;------ ScBufDecPtr ------------------------------------------------------------
+debug_ScBufDecPtr:
+; Deincrements a pointer in the scroll buffer, handling wrapping, but does not
+; check whether the pointer will stay within the buffer data bounds.
+; Inputs:
+;  - HL: Pointer
+;  - IY: Pointer to scroll buffer struct
+; Outputs:
+;  - HL: Pointer
+; Destroys:
+;  - Nothing
+	push	af
+	push	de
+	ld	de, (iy + debug_CmdScBufStart)
+	dec	hl
+	or	a
+	sbc	hl, de
+	add	hl, de
+	jr	nc, +_
+	ld	hl, (iy + debug_CmdScBufEnd)
+	dec	hl
+_:	pop	de
+	pop	af
+	ret
+
+
 ;------ ScBufForward -----------------------------------------------------------
 debug_ScBufForward:
 ; Increments a pointer in the scroll buffer.
@@ -107,6 +236,8 @@ debug_ScBufForward:
 ;  - Z if already at end of buffer, NZ if still more buffer
 ; Destroys:
 ;  - Flags
+	call	debug_ScBufIsEmpty
+	ret	z
 	push	de
 	inc	hl
 	; Check for wrapping
@@ -117,17 +248,18 @@ debug_ScBufForward:
 	ld	de, (iy + debug_CmdScBufBottom)
 	jr	c, +_
 	; Wrapped
-	ld	hl, (iy + debug_CmdScBufStart)
+	ld	hl, (iy + debug_CmdScBufTop)
 	or	a
 	sbc	hl, de
+	add	hl, de
 	pop	de
-	ret	nz
-	ld	hl, (iy + debug_CmdScBufEnd)
-	dec	hl
+	ret	z
+	ld	hl, (iy + debug_CmdScBufStart)
 	ret
 _:	; Not wrapped
 	or	a
 	sbc	hl, de
+	add	hl, de
 	pop	de
 	ret	nz
 	dec	hl
@@ -145,6 +277,8 @@ debug_ScBufBackward:
 ;  - Z if already at start of buffer, NZ if still more
 ; Destroys:
 ;  - Flags
+	call	debug_ScBufIsEmpty
+	ret	z
 	push	de
 	; Check for wrapping
 	ld	de, (iy + debug_CmdScBufStart)
@@ -155,9 +289,9 @@ debug_ScBufBackward:
 	ld	de, (iy + debug_CmdScBufTop)
 	jr	nc, +_
 	; Wrapped
-	ret	nz	; Error condition
 	or	a
 	sbc	hl, de
+	add	hl, de
 	pop	de
 	ret	z
 	ld	hl, (iy + debug_CmdScBufEnd)
@@ -166,6 +300,7 @@ debug_ScBufBackward:
 _:	; Not wrapped
 	or	a
 	sbc	hl, de
+	add	hl, de
 	pop	de
 	dec	hl
 	ret	nz
@@ -208,9 +343,10 @@ debug_ScBufPrevLine:
 ;  - HL: Pointer to start of next line
 ;  - Z if seeked to start of buffer and cannot go further back
 ; Destroys:
-;  - AF, B
+;  - AF
 	call	debug_ScBufBackward
 	ret	z	
+	push	bc
 	ld	b, debug_Cols - 1
 _:	call	debug_ScBufBackward
 	ret	z
@@ -218,10 +354,12 @@ _:	call	debug_ScBufBackward
 	cp	debug_chNewLine
 	jr	z, +_
 	djnz	-_
+	pop	bc
 	ret
 _:	call	debug_ScBufForward
 	xor	a
 	inc	a
+	pop	bc
 	ret
 
 
@@ -233,7 +371,7 @@ debug_ScBufFlushALine:
 ; Output
 ;  - Text removed from buffer
 ; Destroys:
-;  - AF, HL
+;  - Flags, HL
 	ld	hl, (iy + debug_CmdScBufTop)
 	call	debug_ScBufNextLine
 	ld	(iy + debug_CmdScBufTop), hl
@@ -255,13 +393,40 @@ debug_PrintChar:
 	jp	m, debug_printCharLocked
 	inc	(iy + debug_CmdScBufLock)
 	jr	nz, debug_printCharLocked
-	
-	
-	
+	ld	hl, (iy + debug_CmdScBufBottom)
+	call	debug_ScBufIncPtr
+	ld	de, (iy + debug_CmdScBufTop)
+	or	a
+	sbc	hl, de
+	jr	nz, +_
+	push	hl
+	call	debug_ScBufFlushALine
+	pop	hl
+_:	ld	(hl), a
+	ld	(iy + debug_CmdScBufBottom), hl
 	ld	(iy + debug_CmdScBufLock), 255
 	set	debug_CmdFlagScBufWriteNotify, (iy + debug_CmdFlags)
 	or	a
 debug_printCharLocked:
+	ld	hl, (debug_CurRow)
+	push	hl
+	ld	hl, (iy + debug_CmdScBufRow)
+	ld	c, a
+	ld	a, (iy + debug_CmdScBufBottom)
+	or	a
+	jr	z, debug_printCharNoPrint
+	cp	l
+	jr	z, +_
+	jr	nc, ++_
+_:	
+
+_:	ld	(debug_CurRow), hl
+	call	debug_PutC
+	
+debug_printCharNoPrint:
+	pop	hl
+	ld	(debug_CurRow), hl
+debug_printCharExit:
 	pop	bc
 	pop	de
 	pop	hl
@@ -294,6 +459,23 @@ debug_LogByte:
 
 
 ;====== Display Routines =======================================================
+
+; debug_CmdScBufTopDisplayLine caches the top line of displayed stuff
+; Need a function to increment that as-needed
+; debug_printCharLocked will call that to force incrementing if you're out of
+; space, and then it can start printing on a new line
+
+;------ ScBufRefreshBuffer -----------------------------------------------------
+debug_ScBufRefreshBuffer:
+; Refreshes the buffer display.
+	ld	a, (iy + debug_CmdScBufBottomLine)
+	or	a
+	ret	z
+	ld	b, a
+	ld	hl, (iy + debug_CmdScBufBottom)
+_:	call	debug_ScBufPrevLine
+	djnz	-_
+	; Fall through to ScBufShowBuffer
 ;------ ScBufShowBuffer --------------------------------------------------------
 debug_ScBufShowBuffer:
 ; Shows the buffer starting at a given position in the scroll buffer, and prints
@@ -338,14 +520,14 @@ debug_scBufShowBufferClearEndOfWindow:
 debug_ScBufPrintVars:
 	ld	hl, (debug_CurRow)
 	push	hl
-	ld	hl, 12
+	ld	hl, 14
 	ld	(debug_CurRow), hl
 	ld	a, (iy + debug_CmdFlags)
-	call	debug_Byte
+	call	debug_DispByte
 	ld	a, (iy + debug_CmdScBufLock)
-	call	debug_Byte
-	ld	a, (iy + debug_CmdBottomLine)
-	call	debug_Byte
+	call	debug_DispByte
+	ld	a, (iy + debug_CmdScBufBottomLine)
+	call	debug_DispByte
 	ld	a, ' '
 	call	debug_PutC
 	call	debug_PutC
