@@ -59,6 +59,53 @@ debug_testStr:
 	.db	"This momentous decree came as a great beacon light of hope to millions of Negro slaves who had been seared in the flames of withering injustice. "
 	.db	"It came as a joyous daybreak to end the long night of captivity. But 100 years later, we must face the tragic. . . .", 0
 
+debug_Cmd0VarsList:
+	.db	debug_ShowVarsSetCursorPos
+	.db	14, 0
+	.db	debug_ShowVarsShowLabel | 2
+	.dl	debug_Cmd0 + debug_CmdFlags
+	.dl	debug_strFlags
+	.db	debug_ShowVarsShowLabel | 1
+	.dl	debug_Cmd0 + debug_CmdScBufBottomLine
+	.dl	debug_strBottomLine
+	.db	debug_ShowVarsShowLabel | 2
+	.dl	debug_Cmd0 + debug_CmdScBufRow
+	.dl	debug_strCursor
+	.db	debug_ShowVarsShowLabel | debug_ShowVarsLittleEndian | debug_ShowVarsNewLine | 3
+	.dl	debug_Cmd0 + debug_CmdScBufTopDisplayLine
+	.dl	debug_strDisplayLine
+	.db	debug_ShowVarsShowLabel | debug_ShowVarsLittleEndian | 3
+	.dl	debug_Cmd0 + debug_CmdScBufStart
+	.dl	debug_strStart
+	.db	debug_ShowVarsShowLabel | debug_ShowVarsLittleEndian | 3
+	.dl	debug_Cmd0 + debug_CmdScBufEnd
+	.dl	debug_strEnd
+	.db	debug_ShowVarsShowLabel | debug_ShowVarsLittleEndian | 3
+	.dl	debug_Cmd0 + debug_CmdScBufTop
+	.dl	debug_strTop
+	.db	debug_ShowVarsShowLabel | debug_ShowVarsLittleEndian | 3
+	.dl	debug_Cmd0 + debug_CmdScBufBottom
+	.dl	debug_strBottom
+	.db	0
+
+debug_strFlags:
+	.db	"Flags: ", 0
+debug_strBottomLine:
+	.db	" B-Line: ", 0
+debug_strCursor:
+	.db	" Cursor: ", 0
+debug_strDisplayLine:
+	.db	"DLine: ", 0
+debug_strStart:
+	.db	" Start: ", 0
+debug_strEnd:
+	.db	" End: ", 0
+debug_strTop:
+	.db	" Top: ", 0
+debug_strBottom:
+	.db	" Bottom: ", 0
+
+
 ;------ ------------------------------------------------------------------------
 debug_CmdStart:
 ; Reset stack
@@ -84,8 +131,12 @@ debug_CmdStart:
 	ld	bc, 513
 	ldir
 	
+	DEBUG_SHOW_VARS(debug_Cmd0VarsList)
 
-
+	call	debug_GetKey
+	call	debug_Exit
+	
+	
 debug_TestLoopBlah:
 	
 	ld	hl, 8

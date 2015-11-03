@@ -287,14 +287,19 @@ debug_ShowVars:
 ; Displays some variables for debugging.
 ; Input:
 ;  - IX: Pointer to variable list
-;        .db Var flags
-;            00h: End of list
-;            [7]: Show label
-;            [6]: Little-endian display order
-;            [5]: New line before print
-;            [3,0]: Bytes to display
-;        .dl Var ptr
-;        .dl If show label flag set, ptr to label string
+;           .db Var flags
+;               00h: End of list
+;               [7]: Show label
+;               [6]: Little-endian display order
+;               [5]: New line before print
+;               [3,0]: Bytes to display
+;           .dl Var ptr
+;           .dl If show label flag set, ptr to label string
+;        OR if debug_ShowVarsSetCursorPos (bit 4) is set in flags:
+;           .db debug_ShowVarsSetCursorPos
+;           .db CursorRow
+;           .db CursorCol
+;           .db nextItem. . . .
 ; Outputs:
 ;  - Documented effect(s)
 ; Destroys:
@@ -305,6 +310,8 @@ debug_ShowVarsLittleEndianB	.equ	6
 debug_ShowVarsLittleEndian	.equ	40h
 debug_ShowVarsNewLineB		.equ	5
 debug_ShowVarsNewLine		.equ	20h
+debug_ShowVarsSetCursorPosB	.equ	4
+debug_ShowVarsSetCursorPos	.equ	10h
 debug_ShowVarsSizeMask		.equ	0Fh
 debug_ShowVarsFlags		.equ	0
 debug_ShowVarsVar		.equ	1
@@ -313,15 +320,22 @@ debug_ShowVarsLabel		.equ	4
 	push	bc
 	push	de
 	push	hl
+	ld	hl, (debug_CurRow)
+	push	hl
 debug_showVarsLoop:
 ; Show labels
-	bit	debug_ShowVarsNewLineB, (ix + debug_ShowVarsFlags)
+	bit	debug_ShowVarsSetCursorPosB, (ix + debug_ShowVarsFlags)
+	jr	z, +_
+	ld	hl, (ix + 1)
+	ld	(debug_CurRow), hl
+	lea	ix, ix + 3
+_:	bit	debug_ShowVarsNewLineB, (ix + debug_ShowVarsFlags)
 	call	nz, debug_NewLine
 	ld	hl, (ix + debug_ShowVarsLabel)
 	bit	debug_ShowVarsShowLabelB, (ix + debug_ShowVarsFlags)
 	ld	a, ' '
-	call	z, PutC
-	call	nz, PutS
+	call	z, debug_PutC
+	call	nz, debug_PutS
 ; Show variable data
 	; Get pointer to data, and size
 	ld	hl, (ix + debug_ShowVarsVar)
@@ -352,6 +366,8 @@ _:	lea	ix, ix + 4
 	ld	a, (ix)
 	or	a
 	jr	nz, debug_showVarsLoop
+	pop	hl
+	ld	(debug_CurRow), hl
 	pop	hl
 	pop	de
 	pop	bc

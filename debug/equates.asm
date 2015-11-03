@@ -1,3 +1,11 @@
+;------ Macros -----------------------------------------------------------------
+#macro DEBUG_SHOW_VARS(varlist)
+	push	ix
+	ld	ix, varlist
+	call	debug_ShowVars
+	pop	ix
+#endmacro
+
 
 
 ;------ ------------------------------------------------------------------------
