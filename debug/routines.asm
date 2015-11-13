@@ -149,6 +149,23 @@ _:	dec	b
 	adc	a, 40h
 	call	debug_PutC
 	ret
+debug_GetHexByteTable:
+	.db	skCos
+	.db	skSin
+	.db	skRecip
+	.db	skPrgm
+	.db	skMatrix
+	.db	skMath
+	.db	sk9
+	.db	sk8
+	.db	sk7
+	.db	sk6
+	.db	sk5
+	.db	sk4
+	.db	sk3
+	.db	sk2
+	.db	sk1
+	.db	sk0
 
 
 ;------ GetHexByteNoAbort ------------------------------------------------------
@@ -345,7 +362,7 @@ _:	bit	debug_ShowVarsNewLineB, (ix + debug_ShowVarsFlags)
 	ld	a, 16
 _:	ld	b, a
 	; Check for little-endian display order
-	ld	de, 0
+	ld	de, 1
 	bit	debug_ShowVarsLittleEndianB, (ix + debug_ShowVarsFlags)
 	jr	z, +_
 	dec	a
@@ -373,3 +390,121 @@ _:	lea	ix, ix + 4
 	pop	bc
 	pop	af
 	ret
+
+
+;------ EditVars ---------------------------------------------------------------
+debug_EditVars:
+; Allows the user to edit vars shown by ShowVars.
+; Input:
+;  - IX: Pointer to variable list
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - Nothing
+debug_editVarsWriteBufferSize	.equ	16
+debug_editVarsWriteBuffer	.equ	0
+debug_editVarsCursorLocation	.equ	debug_editVarsWriteBufferSize
+debug_editVarsVarList		.equ	debug_editVarsCursorLocation + 6
+	push	af
+	push	bc
+	push	de
+	push	hl
+	push	ix
+	push	iy
+	ld	hl, (debug_CurRow)
+	push	hl
+	ld	iy, -debug_editVarsWriteBufferSize
+	add	iy, sp
+	ld	sp, iy
+debug_editVarsGetNLoop:
+	ld	hl, (iy + debug_editVarsCursorLocation)
+	ld	(debug_CurRow), hl
+	ld	a, '#'
+	call	debug_PutC
+	xor	a
+	ld	(debug_CursorFlags), a
+	call	debug_GetKeyBlinky
+	cp	skClear
+	jr	z, debug_editVarsExit
+	ld	hl, debug_EditVarKeyTable
+	ld	b, 16
+_:	cp	(hl)
+	inc	hl
+	jr	z, +_
+	djnz	-_
+	jr	debug_EditVarsGetNLoop
+_:	ld	ix, (iy + debug_editVarsVarList)
+	dec	b
+	ld	a, b
+	call	debug_DispByte
+_:	xor	a
+	cp	(ix + debug_ShowVarsFlags)
+	jr	z, debug_editVarsGetNLoop
+	bit	debug_ShowVarsSetCursorPosB, (ix + debug_ShowVarsFlags)
+	jr	z, +_
+	lea	ix, ix + 3
+	jr	-_
+_:	ld	a, b
+	or	a
+	jr	z, debug_editVarsEditItem
+	bit	debug_ShowVarsShowLabelB, (ix + debug_ShowVarsFlags)
+	jr	z, +_
+	lea	ix, ix + 3
+_:	lea	ix, ix + 4
+	djnz	---_
+debug_editVarsEditItem:
+	ld	a, '>'
+	call	debug_PutC
+	ld	a, (ix + debug_ShowVarsFlags)
+	and	15
+	jr	nz, +_
+	ld	a, 16
+_:	ld	bc, 0
+	ld	c, a
+	lea	hl, iy + debug_editVarsWriteBuffer
+	ld	de, 1
+	bit	debug_ShowVarsLittleEndianB, (ix + debug_ShowVarsFlags)
+	jr	z, +_
+	dec	de
+	dec	de
+	add	hl, bc
+	dec	hl
+_:	ld	b, c
+_:	call	debug_GetHexByte
+	jr	c, debug_editVarsGetNLoop
+	ld	(hl), a
+	add	hl, de
+	djnz	-_
+	ld	b, 0
+	ld	de, (ix + debug_ShowVarsVar)
+	lea	hl, iy + debug_editVarsWriteBuffer
+	ldir
+debug_editVarsExit:
+	lea	iy, iy + debug_editVarsWriteBufferSize
+	ld	sp, iy
+	pop	hl
+	ld	(debug_CurRow), hl
+	pop	iy
+	pop	ix
+	pop	hl
+	pop	de
+	pop	bc
+	pop	af
+	ret
+debug_EditVarKeyTable:
+	.db	skCos
+	.db	skSin
+	.db	skRecip
+	.db	skPrgm
+	.db	skMatrix
+	.db	skMath
+	.db	sk9
+	.db	sk8
+	.db	sk7
+	.db	sk6
+	.db	sk5
+	.db	sk4
+	.db	sk3
+	.db	sk2
+	.db	sk1
+	.db	sk0

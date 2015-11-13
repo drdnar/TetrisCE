@@ -83,21 +83,3 @@ debug_KeyAsciiTableNumbers2nd:
 	.db	skLn, "&"
 	.db	skSquare, "!"
 debug_KeyAsciiTableNumbers2nd_end:
-
-debug_GetHexByteTable:
-	.db	skCos
-	.db	skSin
-	.db	skRecip
-	.db	skPrgm
-	.db	skMatrix
-	.db	skMath
-	.db	sk9
-	.db	sk8
-	.db	sk7
-	.db	sk6
-	.db	sk5
-	.db	sk4
-	.db	sk3
-	.db	sk2
-	.db	sk1
-	.db	sk0

@@ -29,7 +29,6 @@ debug_Cmd0Clear:
 	.db	0			; debug_CmdScBufRow
 	.db	0			; debug_CmdScBufCol
 	.db	0			; debug_CmdScBufUnused
-	.dl	debug_OutputBuffer1	; debug_CmdScBufTopDisplayLine
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufStart
 	.dl	debug_OutputBuffer1 + 128;debug_OutputBufferSize	; debug_CmdOutBufEnd
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufTop
@@ -48,7 +47,6 @@ debug_testStuff:
 	.db	0
 	.db	0
 	.db	0
-	.dl	debug_OutputBuffer1	; debug_CmdScBufTopDisplayLine
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufStart
 	.dl	debug_OutputBuffer1 + 8;debug_OutputBufferSize	; debug_CmdOutBufEnd
 	.dl	debug_OutputBuffer1 + 5	; debug_CmdOutBufTop
@@ -72,15 +70,12 @@ debug_Cmd0VarsList:
 	.dl	debug_Cmd0 + debug_CmdScBufRow
 	.dl	debug_strCursor
 	.db	debug_ShowVarsShowLabel | debug_ShowVarsLittleEndian | debug_ShowVarsNewLine | 3
-	.dl	debug_Cmd0 + debug_CmdScBufTopDisplayLine
-	.dl	debug_strDisplayLine
-	.db	debug_ShowVarsShowLabel | debug_ShowVarsLittleEndian | 3
 	.dl	debug_Cmd0 + debug_CmdScBufStart
 	.dl	debug_strStart
 	.db	debug_ShowVarsShowLabel | debug_ShowVarsLittleEndian | 3
 	.dl	debug_Cmd0 + debug_CmdScBufEnd
 	.dl	debug_strEnd
-	.db	debug_ShowVarsShowLabel | debug_ShowVarsLittleEndian | 3
+	.db	debug_ShowVarsShowLabel | debug_ShowVarsLittleEndian | debug_ShowVarsNewLine | 3
 	.dl	debug_Cmd0 + debug_CmdScBufTop
 	.dl	debug_strTop
 	.db	debug_ShowVarsShowLabel | debug_ShowVarsLittleEndian | 3
@@ -94,14 +89,12 @@ debug_strBottomLine:
 	.db	" B-Line: ", 0
 debug_strCursor:
 	.db	" Cursor: ", 0
-debug_strDisplayLine:
-	.db	"DLine: ", 0
 debug_strStart:
-	.db	" Start: ", 0
+	.db	"Start: ", 0
 debug_strEnd:
 	.db	" End: ", 0
 debug_strTop:
-	.db	" Top: ", 0
+	.db	"Top: ", 0
 debug_strBottom:
 	.db	" Bottom: ", 0
 
@@ -132,7 +125,15 @@ debug_CmdStart:
 	ldir
 	
 	DEBUG_SHOW_VARS(debug_Cmd0VarsList)
-
+	
+	ld	hl, 3
+	ld	(debug_CurRow), hl
+	ld	ix, debug_Cmd0VarsList
+	call	debug_EditVars
+	
+	DEBUG_SHOW_VARS(debug_Cmd0VarsList)
+	
+	
 	call	debug_GetKey
 	call	debug_Exit
 	
@@ -511,10 +512,6 @@ debug_LogByte:
 
 ;====== Display Routines =======================================================
 
-; debug_CmdScBufTopDisplayLine caches the top line of displayed stuff
-; Need a function to increment that as-needed
-; debug_printCharLocked will call that to force incrementing if you're out of
-; space, and then it can start printing on a new line
 
 ;------ ScBufRefreshBuffer -----------------------------------------------------
 debug_ScBufRefreshBuffer:
