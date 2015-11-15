@@ -437,21 +437,22 @@ _:	ld	ix, (iy + debug_editVarsVarList)
 	dec	b
 	ld	a, b
 	call	debug_DispByte
-_:	xor	a
-	cp	(ix + debug_ShowVarsFlags)
+	xor	a
+_:	cp	(ix + debug_ShowVarsFlags)
 	jr	z, debug_editVarsGetNLoop
 	bit	debug_ShowVarsSetCursorPosB, (ix + debug_ShowVarsFlags)
 	jr	z, +_
 	lea	ix, ix + 3
 	jr	-_
-_:	ld	a, b
-	or	a
+_:	cp	b
 	jr	z, debug_editVarsEditItem
 	bit	debug_ShowVarsShowLabelB, (ix + debug_ShowVarsFlags)
 	jr	z, +_
 	lea	ix, ix + 3
 _:	lea	ix, ix + 4
 	djnz	---_
+	cp	(ix + debug_ShowVarsFlags)
+	jr	z, debug_editVarsGetNLoop
 debug_editVarsEditItem:
 	ld	a, '>'
 	call	debug_PutC
@@ -471,7 +472,8 @@ _:	ld	bc, 0
 	dec	hl
 _:	ld	b, c
 _:	call	debug_GetHexByte
-	jr	c, debug_editVarsGetNLoop
+;	jr	c, debug_editVarsGetNLoop
+	jp	c, debug_editVarsGetNLoop
 	ld	(hl), a
 	add	hl, de
 	djnz	-_
