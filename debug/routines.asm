@@ -417,6 +417,9 @@ debug_editVarsVarList		.equ	debug_editVarsCursorLocation + 6
 	add	iy, sp
 	ld	sp, iy
 debug_editVarsGetNLoop:
+	ld	(debug_CurRow), hl
+	ld	ix, (iy + debug_editVarsVarList)
+	call	debug_ShowVars
 	ld	hl, (iy + debug_editVarsCursorLocation)
 	ld	(debug_CurRow), hl
 	ld	a, '#'
@@ -472,7 +475,6 @@ _:	ld	bc, 0
 	dec	hl
 _:	ld	b, c
 _:	call	debug_GetHexByte
-;	jr	c, debug_editVarsGetNLoop
 	jp	c, debug_editVarsGetNLoop
 	ld	(hl), a
 	add	hl, de
@@ -481,6 +483,7 @@ _:	call	debug_GetHexByte
 	ld	de, (ix + debug_ShowVarsVar)
 	lea	hl, iy + debug_editVarsWriteBuffer
 	ldir
+	jp	debug_editVarsGetNLoop
 debug_editVarsExit:
 	lea	iy, iy + debug_editVarsWriteBufferSize
 	ld	sp, iy

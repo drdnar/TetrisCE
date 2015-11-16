@@ -124,15 +124,7 @@ debug_CmdStart:
 	ld	bc, 513
 	ldir
 	
-	DEBUG_SHOW_VARS(debug_Cmd0VarsList)
-	
-	ld	hl, 3
-	ld	(debug_CurRow), hl
-	ld	ix, debug_Cmd0VarsList
-	call	debug_EditVars
-	
-	DEBUG_SHOW_VARS(debug_Cmd0VarsList)
-	
+	DEBUG_EDIT_VARS(debug_Cmd0VarsList, 13)
 	
 	call	debug_GetKey
 	call	debug_Exit

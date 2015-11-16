@@ -6,6 +6,23 @@
 	pop	ix
 #endmacro
 
+#macro DEBUG_EDIT_VARS(varlist, loc)
+	push	hl
+	ld	hl, (debug_CurRow)
+	ex	(sp), hl
+	push	hl
+	ld	hl, loc
+	ld	(debug_CurRow), hl
+	pop	hl
+	push	ix
+	ld	ix, varlist
+	call	debug_ShowVars
+	pop	ix
+	ex	(sp), hl
+	ld	(debug_CurRow), hl
+	pop	hl
+#endmacro
+
 
 
 ;------ ------------------------------------------------------------------------
