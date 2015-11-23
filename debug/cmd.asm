@@ -48,9 +48,9 @@ debug_testStuff:
 	.db	0
 	.db	0
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufStart
-	.dl	debug_OutputBuffer1 + 8;debug_OutputBufferSize	; debug_CmdOutBufEnd
-	.dl	debug_OutputBuffer1 + 5	; debug_CmdOutBufTop
-	.dl	debug_OutputBuffer1 + 2	; debug_CmdOutBufBottom
+	.dl	debug_OutputBuffer1 + 128;debug_OutputBufferSize	; debug_CmdOutBufEnd
+	.dl	debug_OutputBuffer1 + 0	; debug_CmdOutBufTop
+	.dl	debug_OutputBuffer1 + 96	; debug_CmdOutBufBottom
 
 debug_testStr:
 	.db	"I am happy to join with you today in what will go down in history as the greatest demonstration for freedom in the history of our nation. Five score years ago, a great American, in whose symbolic shadow we stand, signed the Emancipation Proclamation. "
@@ -115,6 +115,7 @@ debug_CmdStart:
 
 	call	debug_ScBufClear
 	
+debug_testScBufResetVars:
 	ld	hl, debug_testStuff
 	lea	de, iy + debug_CmdScBufBottomLine
 	ld	bc, 19
@@ -123,6 +124,58 @@ debug_CmdStart:
 	ld	de, debug_OutputBuffer1
 	ld	bc, 513
 	ldir
+
+debug_testScBufKeyLoop:
+	ld	hl, 9
+	ld	(debug_CurRow), hl
+	ld	hl, 0
+	add	hl, sp
+	call	debug_DispUhl
+	DEBUG_SHOW_VARS(debug_Cmd0VarsList)
+	ld	hl, 10
+	ld	(debug_CurRow), hl
+	ld	a, '$'
+	call	debug_PutC
+	xor	a
+	ld	(debug_CursorFlags), a
+	call	debug_GetKeyBlinky
+	ld	hl, debug_testBufferKeys
+	call	debug_MapJumpTable
+	jr	debug_testScBufKeyLoop
+
+debug_testBufferKeys:
+	.db	(debug_testBufferKeysEnd - debug_testBufferKeys - 1) / 4
+	.db	sk1
+	.dl	debug_testScBufShow
+	.db	skMode
+	.dl	debug_testScBufResetVars
+	.db	skClear
+	.dl	debug_Exit
+	.db	skEnter
+	.dl	debug_testScBufEditVars
+	.db	sk2
+	.dl	debug_testScBufRefreshBuffer
+	.db	sk3
+	.dl	debug_testScBufFlushALine
+debug_testBufferKeysEnd:
+debug_testScBufEditVars:
+	DEBUG_EDIT_VARS(debug_Cmd0VarsList, 13)
+	jp	debug_testScBufKeyLoop
+debug_testScBufShow:
+	ld	hl, (iy + debug_CmdScBufTop)
+	call	debug_ScBufShowBuffer
+	jp	debug_testScBufKeyLoop
+	
+debug_testScBufFlushALine:
+	call	debug_ScBufFlushALine
+	jr	debug_testScBufShow
+debug_testScBufRefreshBuffer:
+	call	debug_ScBufRefreshBuffer
+	jr	debug_testScBufShow
+	
+	
+	ld	hl, (iy + debug_CmdScBufTop)
+	call	debug_ScBufShowBuffer
 	
 	DEBUG_EDIT_VARS(debug_Cmd0VarsList, 13)
 	
@@ -393,12 +446,12 @@ debug_ScBufPrevLine:
 	push	bc
 	ld	b, debug_Cols - 1
 _:	call	debug_ScBufBackward
-	ret	z
+	jr	z, +_
 	ld	a, (hl)
 	cp	debug_chNewLine
-	jr	z, +_
+	jr	z, ++_
 	djnz	-_
-	pop	bc
+_:	pop	bc
 	ret
 _:	call	debug_ScBufForward
 	xor	a
@@ -515,6 +568,7 @@ debug_ScBufRefreshBuffer:
 	ld	hl, (iy + debug_CmdScBufBottom)
 _:	call	debug_ScBufPrevLine
 	djnz	-_
+	
 	; Fall through to ScBufShowBuffer
 ;------ ScBufShowBuffer --------------------------------------------------------
 debug_ScBufShowBuffer:
@@ -545,6 +599,7 @@ debug_scBufShowBufferLoop:
 	or	a
 	ret	z
 	cp	debug_chNewLine
+	call	nz, debug_PutC
 	call	z, debug_NewLineClearEol
 	call	debug_ScBufForward
 	jr	nz, debug_scBufShowBufferLoop
