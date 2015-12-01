@@ -105,6 +105,7 @@ debug_CmdSize			.equ	debug_CmdHistBottom + 3
 ; Command flags
 debug_CmdFlagScBufWriteNotify	.equ	0
 debug_CmdFlagScBufEraseNotify	.equ	1
+debug_CmdFlagScBufDoPrint	.equ	2
 
 ; For some reason, this must be a multiple of 8.
 

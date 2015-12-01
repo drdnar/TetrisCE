@@ -490,6 +490,7 @@ debug_PrintChar:
 	jp	m, debug_printCharLocked
 	inc	(iy + debug_CmdScBufLock)
 	jr	nz, debug_printCharLocked
+	; Check if buffer has room for another byte
 	ld	hl, (iy + debug_CmdScBufBottom)
 	call	debug_ScBufIncPtr
 	ld	de, (iy + debug_CmdScBufTop)
@@ -499,12 +500,14 @@ debug_PrintChar:
 	push	hl
 	call	debug_ScBufFlushALine
 	pop	hl
-_:	ld	(hl), a
+_:	; Write byte
+	ld	(hl), a
 	ld	(iy + debug_CmdScBufBottom), hl
 	ld	(iy + debug_CmdScBufLock), 255
 	set	debug_CmdFlagScBufWriteNotify, (iy + debug_CmdFlags)
 	or	a
 debug_printCharLocked:
+	; Check if we should also display the byte
 	ld	hl, (debug_CurRow)
 	push	hl
 	ld	hl, (iy + debug_CmdScBufRow)
