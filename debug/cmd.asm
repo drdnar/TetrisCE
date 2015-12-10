@@ -1,6 +1,50 @@
 ;===============================================================================
 ;====== ========================================================================
 ;===============================================================================
+; OK, so, here's how the command line works:
+;  - There are two command history buffers.  The user can set a particular
+;    scroll buffer as being active.
+;  - The edit buffer is confined to the bottom five lines of the screen.
+;  - Asynchronous debug prints can cause the scroll buffer to print stuff and
+;    scroll.
+;  - A pointer to the current buffer's struct is in IY.  The print functions
+;    load IY automatically.
+;  - There is no current printing line; the current line is always line 11.
+;  - There is a variable to record the current column.  The display routines
+;    will need to be edited to take this into account.
+;  - Speaking of the display routines, they will now print backwards: they start
+;    on line 11, and then print going up.
+; Interactive loop:
+;  - Display history buffer
+;  - Clear edit buffer
+;  - Edit buffer starts at line 12
+;  - Display prompt
+;  - Enter edit loop
+;     - In edit loop, asynchronous debug prints can trigger printing to the
+;       history buffer.  The printing system will handle any necessary screen
+;       updates and scrolling.
+; TO DO:
+;  - Need to make test harness for history print funtion.
+;     - This will:
+;     - Re-display buffer
+;     - Display internal vars
+;     - Prompt for byte to add with the get ASCII function.  Why not?
+;     - Add the byte.
+;     - Loop.
+;  - Test the simple history printing routine that doesn't print, just adds
+;    bytes to the buffer.
+;  - Finish history print routine.
+;     - This routine must track the current column.
+;     - This routine must trigger scroll-up events.
+;     - Speaking of triggering scrolling up, write that routine.
+;        - You already wrote that complete scroll-up routine.  You just need to
+;          add bounds on it.  Maybe make it a general-purpose routine.
+;  - Test this new routine, without the correct display routine.
+;  - Rewrite history buffer display routine to use column start thing.
+;  - 
+
+
+
 ;------ ------------------------------------------------------------------------
 debug_CmdInitialize:
 ; Reset windows
@@ -21,8 +65,8 @@ debug_Cmd0Clear:
 	.dl	debug_EditBuffer1 + debug_EditBufferSize - 1	; debug_EditEnd
 	.dl	debug_EditBuffer1	; debug_EditPtr
 	.dl	debug_EditBuffer1	; debug_EditBottom
-	.dl	0	; debug_EditStartY, debug_EditStartX
-	.dl	0	; debug_EditY, debug_EditX
+	.db	12, 0, 0	; debug_EditStartY, debug_EditStartX
+	.db	12, 0, 0	; debug_EditY, debug_EditX
 	.db	0	; debug_CmdFlags
 	.db	0	; debug_CmdScBufLock
 	.db	6	; debug_CmdScBufBottomLine
