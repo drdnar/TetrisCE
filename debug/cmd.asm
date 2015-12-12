@@ -14,6 +14,45 @@
 ;    will need to be edited to take this into account.
 ;  - Speaking of the display routines, they will now print backwards: they start
 ;    on line 11, and then print going up.
+;  - Note that the buffer write routines have a write lock, so they're thread-
+;    safe.  Which is nice.  But if you have another thread doing display, you
+;    need to check the write lock; if bit 7 is not set, then the lock is in-use
+;    and displaying the buffer may show some garbage.  Oh, yeah, and don't write
+;    to the buffer if the write lock is not free. :p
+; (e)Z80 locks:
+;  - Locks are used to avoid disabling interrupts during critical sections.
+;    The current implementation doesn't use DI/EI to force the locking operation
+;    to be atomic; see below.
+;  - Locks are implemented with the following instruction sequence:
+;	ld	hl, lockAddress	; An index register may be substituted.
+;	xor	a
+;	sub	(lockAddress)
+;	jp	m, isLocked
+;	inc	(lockAddress)
+;	jr	nz, isLocked	; DO NOT spinlock here!
+;	; Enter critical section
+;	; . . .
+;	; Release lock
+;	ld	(hl), 255
+;    You may object that this sequence still has a race condition: it can be
+;    interrupted between the SUB test and the atomic INC operation.  This is
+;    true.  This sequence will normally detect that.  It is also true that 126
+;    other PREEMPTED attempts must be made to acquire the lock, and an
+;    additional 127 attempts after that, before another thread incorrectly
+;    thinks the lock is free.  Bascially, you need two hundred some threads all
+;    preempted in the same place at the same time for this to fail.  If you have
+;    two hundred threads, what are you up to!?  This device has 406 K of RAM!
+;    What in the world could you be doind with that many threads on a device
+;    with so little RAM?
+;    So, this particular program doesn't have enough threads for that to happen.
+;    Note that it is NOT safe to simply DEC the lock if the INC failed; the lock
+;    could be freed between the INC and DEC and the DEC put the lock into an
+;    invalid state: bit 7 set without bits 0-6 also set (i.e. >= 80h && < 0FFh)
+;    Lock sanity check:
+;	ld	a, (lockAddress)
+;	inc	a
+;	cp	128
+;	jr	c, lockError
 ; Interactive loop:
 ;  - Display history buffer
 ;  - Clear edit buffer
@@ -68,7 +107,7 @@ debug_Cmd0Clear:
 	.db	12, 0, 0	; debug_EditStartY, debug_EditStartX
 	.db	12, 0, 0	; debug_EditY, debug_EditX
 	.db	0	; debug_CmdFlags
-	.db	0	; debug_CmdScBufLock
+	.db	255	; debug_CmdScBufLock
 	.db	6	; debug_CmdScBufBottomLine
 	.db	0			; debug_CmdScBufRow
 	.db	0			; debug_CmdScBufCol
@@ -201,6 +240,8 @@ debug_testBufferKeys:
 	.dl	debug_testScBufRefreshBuffer
 	.db	sk3
 	.dl	debug_testScBufFlushALine
+	.db	sk9
+	.dl	debug_TestPrint
 debug_testBufferKeysEnd:
 debug_testScBufEditVars:
 	DEBUG_EDIT_VARS(debug_Cmd0VarsList, 13)
@@ -226,17 +267,27 @@ debug_testScBufRefreshBuffer:
 	call	debug_GetKey
 	call	debug_Exit
 	
-	
+
+debug_TestPrint:
 debug_TestLoopBlah:
+	or	a
+	sbc	hl, hl
+	ld	(debug_CurRow), hl
+	ld	b, 120
+	ld	a, ' '
+_:	call	debug_PutC
+	djnz	-_
+
+	call	debug_ScBufRefreshBuffer
+	DEBUG_SHOW_VARS(debug_Cmd0VarsList)
 	
 	ld	hl, 8
 	ld	(debug_CurRow), hl
 	
 	call	debug_GetKeyAscii
 	bit	7, a
-	jr	z, +_
+	jr	nz, +_
 	call	debug_PrintChar
-	call	debug_ScBufPrintVars
 	jr	debug_TestLoopBlah
 _:	cp	skClear | 80h
 	call	z, debug_Exit
@@ -534,23 +585,26 @@ debug_PrintChar:
 	jp	m, debug_printCharLocked
 	inc	(iy + debug_CmdScBufLock)
 	jr	nz, debug_printCharLocked
-	; Check if buffer has room for another byte
+	; Write byte
 	ld	hl, (iy + debug_CmdScBufBottom)
+	ld	(hl), c
+	set	debug_CmdFlagScBufWriteNotify, (iy + debug_CmdFlags)
+	; Check if buffer has room for another byte
+	; This can be done AFTER the write because the buffer should always be
+	; able to flush at least one line.  The only exception is with a zero-
+	; size buffer, which wouldn't be very useful anyway. . . .
 	call	debug_ScBufIncPtr
+	push	hl
 	ld	de, (iy + debug_CmdScBufTop)
 	or	a
 	sbc	hl, de
-	jr	nz, +_
-	push	hl
-	call	debug_ScBufFlushALine
+	call	z, debug_ScBufFlushALine
 	pop	hl
-_:	; Write byte
-	ld	(hl), a
 	ld	(iy + debug_CmdScBufBottom), hl
 	ld	(iy + debug_CmdScBufLock), 255
-	set	debug_CmdFlagScBufWriteNotify, (iy + debug_CmdFlags)
 	or	a
 debug_printCharLocked:
+#ifdef	NEVER
 	; Check if we should also display the byte
 	ld	hl, (debug_CurRow)
 	push	hl
@@ -570,6 +624,7 @@ _:	ld	(debug_CurRow), hl
 debug_printCharNoPrint:
 	pop	hl
 	ld	(debug_CurRow), hl
+#endif
 debug_printCharExit:
 	pop	bc
 	pop	de
