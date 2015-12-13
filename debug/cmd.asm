@@ -440,13 +440,14 @@ debug_ScBufForward:
 	ld	de, (iy + debug_CmdScBufBottom)
 	jr	c, +_
 	; Wrapped
-	ld	hl, (iy + debug_CmdScBufTop)
+	ld	hl, (iy + debug_CmdScBufStart)
 	or	a
 	sbc	hl, de
 	add	hl, de
 	pop	de
-	ret	z
-	ld	hl, (iy + debug_CmdScBufStart)
+	ret	nz
+	ld	hl, (iy + debug_CmdScBufEnd)
+	dec	hl
 	ret
 _:	; Not wrapped
 	or	a
@@ -685,7 +686,7 @@ debug_ScBufShowBuffer:
 ;  - AF, BC, DE, HL
 ;  - Cursor positon
 	push	hl
-	call	debug_ScBufPrintVars
+;	call	debug_ScBufPrintVars
 	ld	hl, 0
 	ld	(debug_CurRow), hl
 	ld	hl, (iy + debug_CmdScBufStart)
