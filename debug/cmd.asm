@@ -106,7 +106,7 @@ debug_Cmd0Clear:
 	.dl	debug_EditBuffer1	; debug_EditBottom
 	.db	12, 0, 0	; debug_EditStartY, debug_EditStartX
 	.db	12, 0, 0	; debug_EditY, debug_EditX
-	.db	0	; debug_CmdFlags
+	.db	debug_CmdFlagScBufDoPrintM	; debug_CmdFlags
 	.db	255	; debug_CmdScBufLock
 	.db	6	; debug_CmdScBufBottomLine
 	.db	0			; debug_CmdScBufRow
@@ -603,29 +603,40 @@ debug_PrintChar:
 	pop	hl
 	ld	(iy + debug_CmdScBufBottom), hl
 	ld	(iy + debug_CmdScBufLock), 255
-	or	a
-debug_printCharLocked:
-#ifdef	NEVER
-	; Check if we should also display the byte
-	ld	hl, (debug_CurRow)
+	; Display & increment cursor
+	ld	hl, (debug_CurRow)	; Save & restore cursor in case of asynchronous use, I dunno
 	push	hl
 	ld	hl, (iy + debug_CmdScBufRow)
-	ld	c, a
-	ld	a, (iy + debug_CmdScBufBottom)
-	or	a
-	jr	z, debug_printCharNoPrint
-	cp	l
-	jr	z, +_
-	jr	nc, ++_
-_:	
-
-_:	ld	(debug_CurRow), hl
-	call	debug_PutC
+	ld	a, l
+	cp	(iy + debug_CmdScBufBottomLine)
+	jr	c, +_
 	
-debug_printCharNoPrint:
+	; Er, no, this is wrong.  We need to do the thing with the new scroll up
+	; code.
+	
+	
+	
+	
+	
+	bit	debug_CmdFlagScBufDoPrint, (iy + debug_CmdFlags)
+	call	nz, debug_ScBufRefreshBuffer
+	ld	l, (iy + debug_CmdScBufBottomLine)
+	dec	l
+	ld	h, 0
+	ld	(iy + debug_CmdScBufRow), hl
+	jr	++_
+_:	ld	(debug_CurRow), hl
+	ld	a, c
+	bit	debug_CmdFlagScBufDoPrint, (iy + debug_CmdFlags)
+	call	nz, debug_PutC
+	call	z, debug_CursorLeft
+_:	ld	hl, (debug_CurRow)
+	ld	(iy + debug_CmdScBufRow), hl
 	pop	hl
 	ld	(debug_CurRow), hl
-#endif
+	or	a
+debug_printCharLocked:
+	scf
 debug_printCharExit:
 	pop	bc
 	pop	de

@@ -668,6 +668,38 @@ debug_ScrollUpOneLine:
 	ret
 
 
+;------ ScrollRegionUpOneLine --------------------------------------------------
+debug_ScrollRegionUpOneLine:
+; Scrolls all text up one line.
+; Erases the bottom line of text.
+; Inputs:
+;  - 
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - Nothing.
+	push	bc
+	push	de
+	push	hl
+	
+	; Compute scroll region size
+	
+	
+	ld	hl, debug_Vram + (debug_textHeight * 320 / 8)
+	ld	de, debug_Vram
+	ld	bc, (debug_Rows - 1) * (debug_textHeight * 320 / 8)
+	ldir
+	ld	hl, debug_Vram + ((debug_textHeight * 320 / 8) * (debug_Rows - 1))
+	ld	(hl), 0
+	ld	de, debug_Vram + ((debug_textHeight * 320 / 8) * (debug_Rows - 1)) + 1
+	ld	bc, (debug_textHeight * 320 / 8) - 1
+	ldir
+	pop	hl
+	pop	de
+	pop	bc
+	ret
+
+
 ;------ ReadGlyphBitmap --------------------------------------------------------
 debug_ReadGlyphBitmap:
 ; Reads the bitmap data at the current cursor location.
