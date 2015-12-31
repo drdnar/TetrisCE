@@ -650,6 +650,7 @@ debug_ScrollUpOneLine:
 ;  - Documented effect(s)
 ; Destroys:
 ;  - Nothing.
+	push	af
 	push	bc
 	push	de
 	push	hl
@@ -657,14 +658,22 @@ debug_ScrollUpOneLine:
 	ld	de, debug_Vram
 	ld	bc, (debug_Rows - 1) * (debug_textHeight * 320 / 8)
 	ldir
-	ld	hl, debug_Vram + ((debug_textHeight * 320 / 8) * (debug_Rows - 1))
+;	ld	hl, debug_Vram + ((debug_textHeight * 320 / 8) * (debug_Rows - 1))
+;	ld	(hl), 0
+;	ld	de, debug_Vram + ((debug_textHeight * 320 / 8) * (debug_Rows - 1)) + 1
+;	ld	bc, (debug_textHeight * 320 / 8) - 1
+;	ldir	
+	or	a
+	sbc	hl, hl
+	add	hl, de
+	inc	de
 	ld	(hl), 0
-	ld	de, debug_Vram + ((debug_textHeight * 320 / 8) * (debug_Rows - 1)) + 1
 	ld	bc, (debug_textHeight * 320 / 8) - 1
 	ldir
 	pop	hl
 	pop	de
 	pop	bc
+	pop	af
 	ret
 
 
@@ -673,26 +682,53 @@ debug_ScrollRegionUpOneLine:
 ; Scrolls all text up one line.
 ; Erases the bottom line of text.
 ; Inputs:
-;  - 
+;  - A: Start row
+;  - C: Number of rows in scroll region
 ; Outputs:
 ;  - Documented effect(s)
 ; Destroys:
-;  - Nothing.
+;  - AF
 	push	bc
 	push	de
 	push	hl
-	
-	; Compute scroll region size
-	
-	
-	ld	hl, debug_Vram + (debug_textHeight * 320 / 8)
+	ld	l, a
+	cp	debug_Rows
+	call	nc, DEBUG_PANIC
+	dec	c
+	call	z, DEBUG_PANIC
+	add	a, c
+	call	c, DEBUG_PANIC
+	cp	debug_Rows
+	call	nc, DEBUG_PANIC
+	ld	a, c
+	; Compute scroll region start
+	ld	h, debug_textHeight
+	mlt	hl
+	ld	h, 320 / 8
+	mlt	hl
 	ld	de, debug_Vram
+	add	hl, de
+	ex	de, hl		; This is faster, though twice as large, than
+	or	a		; push hl \ pop de
+	sbc	hl, hl		; 
+	add	hl, de		; 
 	ld	bc, (debug_Rows - 1) * (debug_textHeight * 320 / 8)
+	add	hl, bc
+	; Compute scroll region size
+	ld	c, a
+	ld	b, debug_textHeight
+	mlt	bc
+	ld	b, 320 / 8
+	mlt	bc
+	; Copy
 	ldir
-	ld	hl, debug_Vram + ((debug_textHeight * 320 / 8) * (debug_Rows - 1))
+	; Zero
+	or	a
+	sbc	hl, hl
+	add	hl, de
+	inc	de
 	ld	(hl), 0
-	ld	de, debug_Vram + ((debug_textHeight * 320 / 8) * (debug_Rows - 1)) + 1
-	ld	bc, (debug_textHeight * 320 / 8) - 1
+	ld	bc, (debug_Rows - 1) * (debug_textHeight * 320 / 8)
 	ldir
 	pop	hl
 	pop	de
