@@ -708,11 +708,11 @@ debug_ScrollRegionUpOneLine:
 	mlt	hl
 	ld	de, debug_Vram
 	add	hl, de
-	ex	de, hl		; This is faster, though twice as large, than
+	ex	de, hl		; This is faster than, though twice as large as,
 	or	a		; push hl \ pop de
 	sbc	hl, hl		; 
 	add	hl, de		; 
-	ld	bc, (debug_Rows - 1) * (debug_textHeight * 320 / 8)
+	ld	bc, debug_textHeight * 320 / 8
 	add	hl, bc
 	; Compute scroll region size
 	ld	c, a
@@ -728,7 +728,7 @@ debug_ScrollRegionUpOneLine:
 	add	hl, de
 	inc	de
 	ld	(hl), 0
-	ld	bc, (debug_Rows - 1) * (debug_textHeight * 320 / 8)
+	ld	bc, (debug_textHeight * 320 / 8) - 1
 	ldir
 	pop	hl
 	pop	de
