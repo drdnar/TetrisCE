@@ -26,9 +26,9 @@
 ;  - Locks are implemented with the following instruction sequence:
 ;	ld	hl, lockAddress	; An index register may be substituted.
 ;	xor	a
-;	sub	(lockAddress)
+;	sub	(hl)
 ;	jp	m, isLocked
-;	inc	(lockAddress)
+;	inc	(hl)
 ;	jr	nz, isLocked	; DO NOT spinlock here!
 ;	; Enter critical section
 ;	; . . .
