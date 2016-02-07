@@ -791,7 +791,7 @@ debug_PutMapRaw:
 	ld	hl, debug_TextFlags
 	bit	debug_TextInverseM, (hl)
 	jr	z, +_
-	ld	c, 0F0h
+	ld	c, 0FCh
 _:	; Get LCD VRAM pointer
 	ld	hl, (debug_CurRow)
 	ld	a, h
