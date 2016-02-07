@@ -31,12 +31,18 @@ debug_chTheta			.equ	7Fh
 ; Text flags
 debug_TextInverse		.equ	0
 debug_TextInverseM		.equ	1
-; Stuff, again
-debug_textHeight		.equ	14
 debug_screenWidth		.equ	320
 debug_screenHeight		.equ	240
+; Stuff, again
+#ifndef DEBUG_SMALL_FONT
+debug_textHeight		.equ	14
 debug_Rows			.equ	17
 debug_Cols			.equ	40
+#else
+debug_textHeight		.equ	10
+debug_Rows			.equ	24
+debug_Cols			.equ	53
+#endif
 debug_CursorTime		.equ	1000h
 debug_StackSize			.equ	512
 debug_RegistersSize		.equ	32

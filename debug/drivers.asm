@@ -595,50 +595,6 @@ _:
 	ret
 
 
-;------ PutMap -----------------------------------------------------------------
-debug_PutMap:
-; Displays the given character on screen, at current cursor location.
-; Inputs:
-;  - A: Character code
-; Outputs:
-;  - Documented effect(s)
-; Destroys:
-;  - AF, BC, DE, HL, IX
-	ld	e, a
-	; Get pointer to font data
-	ld	d, debug_textHeight
-	mlt	de
-	ld	ix, debug_fontDataTable	;debug_font
-	add	ix, de
-debug_PutMapRaw:
-; This lets you use anything as the bitmap to display.
-	; Get LCD VRAM pointer
-	ld	hl, (debug_CurRow)
-	ld	bc, 0
-	ld	c, h
-	ld	h, debug_textHeight	; Row times lines per row . . .
-	mlt	hl
-	ld	h, debug_Cols		; . . . times bytes per line
-	mlt	hl
-	add	hl, bc
-	ld	de, debug_Vram	;(mpLcdBase)
-	add	hl, de
-	; Loop
-	ld	de, 320 / 8
-	ld	bc, debug_textHeight * 256
-	ld	a, (debug_TextFlags)
-	and	debug_TextInverseM
-	jr	z, +_
-	dec	c
-_:	ld	a, (ix)
-	inc	ix
-	xor	c
-	ld	(hl), a
-	add	hl, de
-	djnz	-_
-	ret
-
-
 ;------ ScrollUpOneLine --------------------------------------------------------
 debug_ScrollUpOneLine:
 ; Scrolls all text up one line.
@@ -735,6 +691,51 @@ debug_ScrollRegionUpOneLine:
 	ret
 
 
+#ifndef	DEBUG_SMALL_FONT
+;------ PutMap -----------------------------------------------------------------
+debug_PutMap:
+; Displays the given character on screen, at current cursor location.
+; Inputs:
+;  - A: Character code
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - AF, BC, DE, HL, IX
+	ld	e, a
+	; Get pointer to font data
+	ld	d, debug_textHeight
+	mlt	de
+	ld	ix, debug_fontDataTable	;debug_font
+	add	ix, de
+debug_PutMapRaw:
+; This lets you use anything as the bitmap to display.
+	; Get LCD VRAM pointer
+	ld	hl, (debug_CurRow)
+	ld	bc, 0
+	ld	c, h
+	ld	h, debug_textHeight	; Row times lines per row . . .
+	mlt	hl
+	ld	h, debug_Cols		; . . . times bytes per line
+	mlt	hl
+	add	hl, bc
+	ld	de, debug_Vram	;(mpLcdBase)
+	add	hl, de
+	; Loop
+	ld	de, 320 / 8
+	ld	bc, debug_textHeight * 256
+	ld	a, (debug_TextFlags)
+	and	debug_TextInverseM
+	jr	z, +_
+	dec	c
+_:	ld	a, (ix)
+	inc	ix
+	xor	c
+	ld	(hl), a
+	add	hl, de
+	djnz	-_
+	ret
+
+
 ;------ ReadGlyphBitmap --------------------------------------------------------
 debug_ReadGlyphBitmap:
 ; Reads the bitmap data at the current cursor location.
@@ -765,3 +766,191 @@ _:	ld	a, (hl)
 	add	hl, de
 	djnz	-_
 	ret
+
+
+#else
+;------ PutMap -----------------------------------------------------------------
+debug_PutMap:
+; Displays the given character on screen, at current cursor location.
+; Inputs:
+;  - A: Character code
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - AF, BC, DE, HL, IX
+	ld	e, a
+	; Get pointer to font data
+	ld	d, debug_textHeight
+	mlt	de
+	ld	ix, debug_fontDataTable	;debug_font
+	add	ix, de
+debug_PutMapRaw:
+; This lets you use anything as the bitmap to display.
+	; Inverse mode & number of rows in bitmap
+	ld	bc, debug_textHeight * 256
+	ld	hl, debug_TextFlags
+	bit	debug_TextInverseM, (hl)
+	jr	z, +_
+	ld	c, 0F0h
+_:	; Get LCD VRAM pointer
+	ld	hl, (debug_CurRow)
+	ld	a, h
+	add	a, a
+	add	a, h	; Multiply column by 3/4 (6/8)
+	ld	de, 0
+	ld	e, a	; . . . but keep bottom two bits in A
+	srl	e
+	srl	e
+	ld	h, debug_textHeight	; Row times lines per row . . .
+	mlt	hl
+	ld	h, 320 / 8		; . . . times bytes per line
+	mlt	hl
+	add	hl, de
+	ld	de, debug_Vram	;(mpLcdBase)
+	add	hl, de
+	; Figure out which column offset we have to deal with
+	and	3
+	jr	z, debug_PutMap0
+	dec	a
+	jr	z, debug_PutMap1
+	dec	a
+	jr	z, debug_PutMap2
+	; 3: xxxxxxDD EEEEyyyy
+	;    54321076 54321076
+_:	ld	a, (ix)
+	inc	ix
+	xor	c
+	rlca
+	rlca
+	ld	d, a
+	and	0F0h
+	ld	e, a
+	ld	a, d
+	and	3
+	ld	d, a
+	ld	a, (hl)
+	and	0FCh
+	or	d
+	ld	(hl), a
+	inc	hl
+	ld	a, (hl)
+	and	0Fh
+	or	e
+	ld	(hl), a
+	ld	de, 320 / 8 - 1
+	add	hl, de
+	djnz	-_
+	ret
+debug_PutMap2:
+	; xxxxDDDD EEyyyyyy
+	; 32107654 32107654
+	ld	a, (ix)
+	inc	ix
+	xor	c
+	rrca
+	rrca
+	rrca
+	rrca
+	ld	d, a
+	and	0C0h
+	ld	e, a
+	ld	a, d
+	and	0Fh
+	ld	d, a
+	ld	a, (hl)
+	and	0F0h
+	or	d
+	ld	(hl), a
+	inc	hl
+	ld	a, (hl)
+	and	3Fh
+	or	e
+	ld	(hl), a
+	ld	de, 320 / 8 - 1
+	add	hl, de
+	djnz	debug_PutMap2
+	ret
+debug_PutMap1:
+	; xxDDDDDD
+	; --765432
+	ld	de, 320 / 8
+_:	ld	a, (ix)
+	inc	ix
+	xor	c
+	rrca		; Assume that bits 1 & 0 are left 0
+	rrca
+	ld	d, a
+	ld	a, (hl)
+	and	0C0h
+	or	d
+	ld	(hl), a
+	ld	d, 0
+	add	hl, de
+	djnz	-_
+	ret
+debug_PutMap0:
+	; DDDDDDyy
+	; 76543210
+	ld	de, 320 / 8
+_:	ld	a, (hl)
+	and	3
+	or	(ix)
+	inc	ix
+	xor	c
+	ld	(hl), a
+	add	hl, de
+	djnz	-_
+	ret
+
+
+;------ ReadGlyphBitmap --------------------------------------------------------
+debug_ReadGlyphBitmap:
+; Reads the bitmap data at the current cursor location.
+; Inputs:
+;  - Cursor location
+;  - IX: Location to write bitmap to
+; Outputs:
+;  - Documented effect(s)
+; Destroys:
+;  - AF, BC, DE, HL, IX
+; Get LCD VRAM pointer
+	ld	hl, (debug_CurRow)
+	ld	a, h
+	add	a, a
+	add	a, h	; Multiply column by 3/4 (6/8)
+	ld	de, 0
+	ld	e, a	; . . . but keep bottom two bits in A
+	srl	e
+	srl	e
+	ld	h, debug_textHeight	; Row times lines per row . . .
+	mlt	hl
+	ld	h, 320 / 8		; . . . times bytes per line
+	mlt	hl
+	add	hl, de
+	ld	de, debug_Vram	;(mpLcdBase)
+	add	hl, de
+	; Figure out which column offset we have to deal with
+	add	a, a
+	ld	c, debug_textHeight
+debug_ReadGlyphBitmapLoop:
+	ld	d, (hl)
+	inc	hl
+	ld	e, (hl)
+	or	a
+	jr	z, debug_ReadGlyphBitmapLoopNoShift
+	ld	b, a
+	ex	de, hl
+_:	add	hl, hl
+	djnz	-_
+	ex	de, hl
+debug_ReadGlyphBitmapLoopNoShift:
+	res	6, d
+	res	7, d
+	ld	(ix), d
+	inc	ix
+	ld	de, 320 / 8 - 1
+	add	hl, de
+	dec	c
+	jr	nz, debug_ReadGlyphBitmapLoop
+	ret
+#endif

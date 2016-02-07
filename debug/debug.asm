@@ -310,5 +310,9 @@ debug_Exit_di:
 #include "debug/drivers.asm"
 #include "debug/drivers_data.asm"
 #include "debug/cmd.asm"
+#ifndef	DEBUG_SMALL_FONT
 #include "debug/font14.asm"
+#else
+#include "debug/font10.asm"
+#endif
 #include "debug/routines.asm"

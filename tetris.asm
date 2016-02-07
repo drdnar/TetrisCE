@@ -7,6 +7,7 @@
 #include "convhex.inc"
 
 #define	INCLUDE_DEBUGGER
+#define	DEBUG_SMALL_FONT
 #define DEBUG_MUST_EI
 #define DEBUG_PANIC Quit
 #define	DEBUG_KEYBOARD_ROUTINE
