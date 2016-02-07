@@ -4,6 +4,14 @@
 ; Usage notes:
 ;  - ISDB assumes exclusive long-mode.  Some additional code is needed for
 ;    mixed-mode support.  Don't forget to save SPS.
+;  - #define DEBUG_SMALL_FONT to get a smaller font, using 6 by 10 character
+;    cells.  (It's more readable than the traditional 6 by 8/5x7 cells.)
+;  - #define DEBUG_LIGHT_FONT to get a regular weight (non-bold) font.
+;    ("Light" seemed like a more appropriate antonym than "regular.")
+;    The bold variant is the default because it is slightly easier to read for
+;    people who do not have excellent near vision.  You'll note that TI also
+;    decided to go with bolder text when they switched to the higher-resolution
+;    display, likely for similar reasons.
 ; 
 ;------ ------------------------------------------------------------------------
 ; Desired debugger functionality:
@@ -311,8 +319,16 @@ debug_Exit_di:
 #include "debug/drivers_data.asm"
 #include "debug/cmd.asm"
 #ifndef	DEBUG_SMALL_FONT
-#include "debug/font14.asm"
+	#ifndef	DEBUG_LIGHT_FONT
+		#include "debug/font14-b.asm"
+	#else
+		#include "debug/font14-r.asm"
+	#endif
 #else
-#include "debug/font10.asm"
+	#ifndef	DEBUG_LIGHT_FONT
+		#include "debug/font10-b.asm"
+	#else
+		#include "debug/font10-r.asm"
+	#endif
 #endif
 #include "debug/routines.asm"

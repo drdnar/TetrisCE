@@ -104,8 +104,13 @@ debug_Cmd0Clear:
 	.dl	debug_EditBuffer1 + debug_EditBufferSize - 1	; debug_EditEnd
 	.dl	debug_EditBuffer1	; debug_EditPtr
 	.dl	debug_EditBuffer1	; debug_EditBottom
-	.db	12, 0, 0	; debug_EditStartY, debug_EditStartX
-	.db	12, 0, 0	; debug_EditY, debug_EditX
+#ifndef	DEBUG_SMALL_FONT
+	.db	debug_Rows - 5, 0, 0	; debug_EditStartY, debug_EditStartX
+	.db	debug_Rows - 5, 0, 0	; debug_EditY, debug_EditX
+#else
+	.db	debug_Rows - 3, 0, 0	; debug_EditStartY, debug_EditStartX
+	.db	debug_Rows - 3, 0, 0	; debug_EditY, debug_EditX
+#endif
 	.db	debug_CmdFlagScBufDoPrintM	; debug_CmdFlags
 	.db	255	; debug_CmdScBufLock
 	.db	6	; debug_CmdScBufBottomLine
@@ -142,7 +147,7 @@ debug_testStr:
 
 debug_Cmd0VarsList:
 	.db	debug_ShowVarsSetCursorPos
-	.db	14, 0
+	.db	debug_Rows - 3, 0
 	.db	debug_ShowVarsShowLabel | 2
 	.dl	debug_Cmd0 + debug_CmdFlags
 	.dl	debug_strFlags
