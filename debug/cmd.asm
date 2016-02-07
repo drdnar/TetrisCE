@@ -63,7 +63,7 @@
 ;       history buffer.  The printing system will handle any necessary screen
 ;       updates and scrolling.
 ; TO DO:
-;  - Need to make test harness for history print funtion.
+;  + Need to make test harness for history print funtion.
 ;     - This will:
 ;     - Re-display buffer
 ;     - Display internal vars
@@ -240,16 +240,22 @@ debug_testBufferKeys:
 	.dl	debug_testScBufRefreshBuffer
 	.db	sk3
 	.dl	debug_testScBufFlushALine
+	.db	sk4
+	.dl	debug_testScBufClear
 	.db	sk9
 	.dl	debug_TestPrint
 debug_testBufferKeysEnd:
-debug_testScBufEditVars:
-	DEBUG_EDIT_VARS(debug_Cmd0VarsList, 13)
-	jp	debug_testScBufKeyLoop
 debug_testScBufShow:
 	ld	hl, (iy + debug_CmdScBufTop)
 	call	debug_ScBufShowBuffer
+	jr	debug_testScBufKeyLoop
+debug_testScBufClear:
+	call	debug_ScBufClear
+	jp	debug_testScBufShow
+debug_testScBufEditVars:
+	DEBUG_EDIT_VARS(debug_Cmd0VarsList, 13)
 	jp	debug_testScBufKeyLoop
+
 	
 debug_testScBufFlushALine:
 	call	debug_ScBufFlushALine
@@ -504,6 +510,10 @@ _:	; Not wrapped
 ;------ ScBufNextLine ----------------------------------------------------------
 debug_ScBufNextLine:
 ; Seeks to the next line of the scroll buffer, given the start of a line.
+; ScBufFlushALine uses this to find the next line to flush.
+; If you call this on the last line of text in a buffer, it returns the last
+; byte in the buffer.  ScBufFlushALine will call ScBufClear to make make the
+; buffer fully empty in this case.
 ; Inputs:
 ;  - HL: Pointer to current line
 ;  - IY: Pointer to scroll buffer struct
@@ -567,6 +577,7 @@ debug_ScBufFlushALine:
 ;  - Flags, HL
 	ld	hl, (iy + debug_CmdScBufTop)
 	call	debug_ScBufNextLine
+	call	z, debug_ScBufClear
 	ld	(iy + debug_CmdScBufTop), hl
 	set	debug_CmdFlagScBufEraseNotify, (iy + debug_CmdFlags)
 	ret
@@ -700,8 +711,8 @@ debug_ScBufShowBuffer:
 ;	call	debug_ScBufPrintVars
 	ld	hl, 0
 	ld	(debug_CurRow), hl
-	ld	hl, (iy + debug_CmdScBufStart)
-	ld	de, (iy + debug_CmdScBufEnd)
+	ld	hl, (iy + debug_CmdScBufTop)
+	ld	de, (iy + debug_CmdScBufBottom)
 	sbc	hl, de
 	pop	hl
 	jr	z, debug_scBufShowBufferClearEndOfWindow

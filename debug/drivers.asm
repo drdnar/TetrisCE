@@ -624,13 +624,12 @@ debug_PutMapRaw:
 	ld	de, debug_Vram	;(mpLcdBase)
 	add	hl, de
 	; Loop
-	ld	c, 0
+	ld	de, 320 / 8
+	ld	bc, debug_textHeight * 256
 	ld	a, (debug_TextFlags)
 	and	debug_TextInverseM
 	jr	z, +_
-	ld	c, 255
-_:	ld	de, 320 / 8
-	ld	b, debug_textHeight
+	dec	c
 _:	ld	a, (ix)
 	inc	ix
 	xor	c
