@@ -1455,11 +1455,11 @@ debug_fontDataTable:
 	.db	00000000b
 	.db	11111000b
 	.db	11111000b
-	.db	11011000b
-	.db	11101000b
 	.db	11001000b
 	.db	10101000b
+	.db	10101000b
 	.db	11001000b
+	.db	11111000b
 	.db	11111000b
 	.db	00000000b
 	; Code point 84 � �
@@ -1498,9 +1498,9 @@ debug_fontDataTable:
 	; Code point 87 � �
 	.db	00000000b
 	.db	00000000b
-	.db	00100000b
-	.db	00010000b
+	.db	00000000b
 	.db	00110000b
+	.db	01010000b
 	.db	01010000b
 	.db	00110000b
 	.db	00000000b
