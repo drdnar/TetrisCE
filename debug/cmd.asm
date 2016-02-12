@@ -589,6 +589,73 @@ debug_ScBufFlushALine:
 
 
 ;====== API for Actual Texty Stuff =============================================
+;------ PrintBufChar -----------------------------------------------------------
+debug_PrintBufChar:
+; Prints a single glyph to the current scroll buffer.
+;  - Carry if cannot print due to buffer locked
+	push	hl
+	push	de
+	push	bc
+	ld	c, a
+	xor	a
+	sub	(iy + debug_CmdScBufLock)
+	jp	m, debug_printBufCharLocked
+	inc	(iy + debug_CmdScBufLock)
+	jr	nz, debug_printBufCharLocked
+	; Write byte
+	ld	hl, (iy + debug_CmdScBufBottom)
+	ld	(hl), c
+	set	debug_CmdFlagScBufWriteNotify, (iy + debug_CmdFlags)
+	; Check if buffer has room for another byte
+	; This can be done AFTER the write because the buffer should always be
+	; able to flush at least one line.  The only exception is with a zero-
+	; size buffer, which wouldn't be very useful anyway. . . .
+	call	debug_ScBufIncPtr
+	push	hl
+	ld	de, (iy + debug_CmdScBufTop)
+	or	a
+	sbc	hl, de
+	call	z, debug_ScBufFlushALine
+	pop	hl
+	ld	(iy + debug_CmdScBufBottom), hl
+	ld	(iy + debug_CmdScBufLock), 255
+	
+	; Display & increment cursor
+	ld	hl, (debug_CurRow)	; Save & restore cursor in case of asynchronous use, I dunno
+	push	hl
+	
+	
+	ld	hl, (iy + debug_CmdScBufRow)
+	ld	a, h
+	or	a
+	jr	nz, +_
+	xor	a
+	ld	c, (iy + debug_CmdScBufBottomLine)
+	dec	c
+	bit	debug_CmdFlagScBufDoPrint, (iy + debug_CmdFlags)
+	jr	z, ++_
+	call	debug_ScrollRegionUpOneLine
+_:	ld	(debug_CurRow), hl
+	ld	a, c
+	bit	debug_CmdFlagScBufDoPrint, (iy + debug_CmdFlags)
+	call	nz, debug_PutC
+	call	z, debug_CursorLeft
+_:	ld	hl, (debug_CurRow)
+	ld	(iy + debug_CmdScBufRow), hl
+	pop	hl
+	ld	(debug_CurRow), hl
+	or	a
+debug_printBufCharLocked:
+	scf
+debug_printBufCharExit:
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+
+
+
+
 ;------ PrintChar --------------------------------------------------------------
 debug_PrintChar:
 ; Prints a single glyph to the current scroll buffer.
@@ -619,6 +686,12 @@ debug_PrintChar:
 	pop	hl
 	ld	(iy + debug_CmdScBufBottom), hl
 	ld	(iy + debug_CmdScBufLock), 255
+	
+	
+	
+	; Consider rewriting this entire section.
+	
+	
 	; Display & increment cursor
 	ld	hl, (debug_CurRow)	; Save & restore cursor in case of asynchronous use, I dunno
 	push	hl
@@ -686,6 +759,77 @@ debug_LogByte:
 
 
 ;====== Display Routines =======================================================
+
+
+
+
+;------ ScBufShowBuffer --------------------------------------------------------
+debug_ScBufShowBuffer:
+; Shows the buffer, ending at a given position in the scroll buffer; the
+; buffer is printed bottom-to-top.
+; Input:
+;  - HL: END position
+;  - IY: Pointer to scroll buffer struct
+; Output:
+;  - Documented effect(s)
+; Destroys:
+;  - AF, BC, DE, HL
+;  - Cursor positon
+
+	ld	a, (iy + debug_CmdScBufBottomLine)
+	dec	a
+	ld	(debug_CurRow), a
+	
+debug_scBufShowBufferLoop:	
+	; This needs a customized version that pays attention to the cached column number.
+	call	debug_ScBufPrevLine
+	xor	a
+	ld	(debug_CurCol), a
+
+debug_scBufShowBufferLineLoop:
+	ld	a, (hl)
+	or	a
+	jr	z,  debug_scBufShowBufferClearWindowRemainder
+	cp	chNewLine
+	jr	z, debug_scBufShowBufferClearEol
+	call	debug_PutC
+	ld	a, (debug_CurCol)
+	or	a
+	jr	nz, debug_scBufShowBufferLineLoop
+debug_scBufShowBufferClearEol:
+	call	debug_NewLineClearEol2
+	ld	a, (debug_CurRow)
+	dec	a
+	ret	z
+	dec	a
+	ld	(debug_CurRow), a
+	call	debug_ScBufPrevLine
+	jr	debug_scBufShowBufferLoop
+debug_scBufShowBufferClearWindowRemainder:
+	call	debug_NewLineClearEol2
+	ld	a, (debug_CurRow)
+	dec	a
+	ret	z
+	dec	a
+	ld	(debug_CurRow), a
+	jr	debug_scBufShowBufferClearWindowRemainder
+
+	
+	
+	
+	ld	a, (debug_CurRow)
+	cp	(iy + debug_CmdScBufBottomLine)
+	ret	nc
+	ld	a, (hl)
+	or	a
+	ret	z
+	cp	debug_chNewLine
+	call	nz, debug_PutC
+	call	z, debug_NewLineClearEol
+	call	debug_ScBufForward
+	jr	nz, debug_scBufShowBufferLoop
+
+
 
 
 ;------ ScBufRefreshBuffer -----------------------------------------------------
