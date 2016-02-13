@@ -591,8 +591,16 @@ debug_ScBufFlushALine:
 ;====== API for Actual Texty Stuff =============================================
 ;------ PrintBufChar -----------------------------------------------------------
 debug_PrintBufChar:
-; Prints a single glyph to the current scroll buffer.
+; Prints a single character to the current scroll buffer.
+; If the buffer's DoPrint flag is set, then the character is also displayed.
+; Keeps track of cursor.
+; Inputs:
+;  - A: Code to add
+;  - IY: Pointer to buffer struct
+; Output:
 ;  - Carry if cannot print due to buffer locked
+; Destroys:
+;  - AF
 	push	hl
 	push	de
 	push	bc
@@ -618,33 +626,45 @@ debug_PrintBufChar:
 	call	z, debug_ScBufFlushALine
 	pop	hl
 	ld	(iy + debug_CmdScBufBottom), hl
-	ld	(iy + debug_CmdScBufLock), 255
-	
 	; Display & increment cursor
 	ld	hl, (debug_CurRow)	; Save & restore cursor in case of asynchronous use, I dunno
 	push	hl
-	
-	
 	ld	hl, (iy + debug_CmdScBufRow)
-	ld	a, h
-	or	a
-	jr	nz, +_
+	ld	(debug_CurRow), hl
+	; Check for printing
+	bit	debug_CmdFlagScBufDoPrint, (iy + debug_CmdFlags)
+	jr	nz, debug_printBufCharDoPrint
+	ld	a, c
+	cp	chNewLine
+	jr	z, debug_printBufCharNewLine
+	call	debug_AdvanceCursor
+	jr	debug_printBufCharDonePrint
+debug_printBufCharNewLine:
+	; We defer actually scrolling up until the next call to print something.
 	xor	a
+	ld	(debug_CurCol), a
+	jr	debug_printBufCharDonePrint
+debug_printBufCharDoPrint:
+	ld	b, c
 	ld	c, (iy + debug_CmdScBufBottomLine)
 	dec	c
-	bit	debug_CmdFlagScBufDoPrint, (iy + debug_CmdFlags)
-	jr	z, ++_
-	call	debug_ScrollRegionUpOneLine
-_:	ld	(debug_CurRow), hl
+	ld	a, h
+	or	a	; Reuse A == 0 for top line
+	call	z, debug_ScrollRegionUpOneLine
 	ld	a, c
-	bit	debug_CmdFlagScBufDoPrint, (iy + debug_CmdFlags)
-	call	nz, debug_PutC
-	call	z, debug_CursorLeft
-_:	ld	hl, (debug_CurRow)
+	ld	(debug_CurRow), a
+	ld	a, b
+	cp	chNewLine
+	jr	z, debug_printBufCharNewLine
+	call	debug_PutC
+debug_printBufCharDonePrint:
+	ld	hl, (debug_CurRow)
 	ld	(iy + debug_CmdScBufRow), hl
 	pop	hl
 	ld	(debug_CurRow), hl
+	ld	(iy + debug_CmdScBufLock), 255
 	or	a
+	jr	debug_printBufCharExit
 debug_printBufCharLocked:
 	scf
 debug_printBufCharExit:
@@ -652,8 +672,6 @@ debug_printBufCharExit:
 	pop	de
 	pop	hl
 	ret
-
-
 
 
 ;------ PrintChar --------------------------------------------------------------
@@ -686,12 +704,6 @@ debug_PrintChar:
 	pop	hl
 	ld	(iy + debug_CmdScBufBottom), hl
 	ld	(iy + debug_CmdScBufLock), 255
-	
-	
-	
-	; Consider rewriting this entire section.
-	
-	
 	; Display & increment cursor
 	ld	hl, (debug_CurRow)	; Save & restore cursor in case of asynchronous use, I dunno
 	push	hl
@@ -702,10 +714,6 @@ debug_PrintChar:
 	
 	; Er, no, this is wrong.  We need to do the thing with the new scroll up
 	; code.
-	
-	
-	
-	
 	
 	bit	debug_CmdFlagScBufDoPrint, (iy + debug_CmdFlags)
 	call	nz, debug_ScBufRefreshBuffer
