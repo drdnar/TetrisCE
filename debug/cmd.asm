@@ -281,24 +281,28 @@ debug_testScBufRefreshBuffer:
 
 debug_TestPrint:
 debug_TestLoopBlah:
-	or	a
-	sbc	hl, hl
-	ld	(debug_CurRow), hl
-	ld	b, 120
-	ld	a, ' '
-_:	call	debug_PutC
-	djnz	-_
+;	or	a
+;	sbc	hl, hl
+;	ld	(debug_CurRow), hl
+;	ld	b, 120
+;	ld	a, ' '
+;_:	call	debug_PutC
+;	djnz	-_
 
-	call	debug_ScBufRefreshBuffer
+;	call	debug_ScBufRefreshBufferDumb
 	DEBUG_SHOW_VARS(debug_Cmd0VarsList)
 	
 	ld	hl, 8
 	ld	(debug_CurRow), hl
 	
 	call	debug_GetKeyAscii
-	bit	7, a
+	cp	skEnter | 80h
 	jr	nz, +_
-	call	debug_PrintChar
+	ld	a, chNewLine
+_:	bit	7, a
+	jr	nz, +_
+	and	7Fh
+	call	debug_PrintBufChar
 	jr	debug_TestLoopBlah
 _:	cp	skClear | 80h
 	call	z, debug_Exit
@@ -647,11 +651,11 @@ debug_printBufCharNewLine:
 debug_printBufCharDoPrint:
 	ld	b, c
 	ld	c, (iy + debug_CmdScBufBottomLine)
-	dec	c
 	ld	a, h
 	or	a	; Reuse A == 0 for top line
 	call	z, debug_ScrollRegionUpOneLine
 	ld	a, c
+	dec	a
 	ld	(debug_CurRow), a
 	ld	a, b
 	cp	chNewLine
@@ -768,25 +772,86 @@ debug_LogByte:
 
 ;====== Display Routines =======================================================
 
+debug_ScBufRefreshBufferDumb:
+	call	debug_ScBufIsEmpty
+	ret	z
+	or	a
+	sbc	hl, hl
+	ld	(debug_CurRow), hl
+	ld	hl, (iy + debug_CmdScBufTop)
+debug_ScBufRefreshBufferDumbLoop:
+	ld	a, (hl)
+	cp	chNewLine
+	call	nz, debug_PutC
+	call	z, debug_NewLineClearEol
+	call	debug_ScBufForward
+	ret	z
+	jr	debug_ScBufRefreshBufferDumbLoop
 
 
+;------ ScBufGetLastLine -------------------------------------------------------
+debug_ScBufGetLastLine:
+; Returns a pointer to the first byte of the last line of text in the scroll
+; buffer.
+; Input:
+;  - IY: Pointer to scroll buffer struct
+; Output:
+;  - HL: Pointer to start of line
+; Destroys:
+;  - AF
+;  - B
+	ld	hl, (iy + debug_CmdScBufBottom)
+	ld	a, (iy + debug_CmdScBufCol)
+	or	a
+	jp	z, debug_ScBufPrevLine
+	ld	b, a
+_:	call	debug_ScBufBackward
+	djnz	-_
+	ret
 
+
+;------ ScBufRefreshBuffer -----------------------------------------------------
+debug_ScBufRefreshBuffer:
+; Refreshes the buffer display.
+	ld	a, (iy + debug_CmdScBufBottomLine)
+	or	a
+	ret	z
+	call	debug_ScBufGetLastLine
+	
+	; Fall through to ScBufShowBuffer
 ;------ ScBufShowBuffer --------------------------------------------------------
 debug_ScBufShowBuffer:
 ; Shows the buffer, ending at a given position in the scroll buffer; the
 ; buffer is printed bottom-to-top.
-; Input:
-;  - HL: END position
+; Inputs:
+;  - HL: Start of last line to display
 ;  - IY: Pointer to scroll buffer struct
 ; Output:
 ;  - Documented effect(s)
 ; Destroys:
 ;  - AF, BC, DE, HL
-;  - Cursor positon
+;  - Cursor position
 
-	ld	a, (iy + debug_CmdScBufBottomLine)
-	dec	a
-	ld	(debug_CurRow), a
+	ld	l, (iy + debug_CmdScBufBottomLine)
+	dec	l
+	ld	h, 0
+	ld	(debug_CurRow), hl
+	
+debug_scBufShowBufferLineLoop:
+	ld	a, (hl)
+	or	a
+	jr	z,  debug_scBufShowBufferClearWindowRemainder
+	cp	chNewLine
+	jr	z, debug_scBufShowBufferClearEol
+	call	debug_PutC
+	ld	a, (debug_CurCol)
+	or	a
+	jr	nz, debug_scBufShowBufferLineLoop
+	
+	
+	
+	
+	
 	
 debug_scBufShowBufferLoop:	
 	; This needs a customized version that pays attention to the cached column number.
@@ -794,7 +859,7 @@ debug_scBufShowBufferLoop:
 	xor	a
 	ld	(debug_CurCol), a
 
-debug_scBufShowBufferLineLoop:
+;debug_scBufShowBufferLineLoop:
 	ld	a, (hl)
 	or	a
 	jr	z,  debug_scBufShowBufferClearWindowRemainder
@@ -839,7 +904,7 @@ debug_scBufShowBufferClearWindowRemainder:
 
 
 
-
+#ifdef	NEVER
 ;------ ScBufRefreshBuffer -----------------------------------------------------
 debug_ScBufRefreshBuffer:
 ; Refreshes the buffer display.
@@ -891,6 +956,7 @@ debug_scBufShowBufferClearEndOfWindow:
 	ret	nc
 	call	debug_NewLineClearEol
 	jr	debug_scBufShowBufferClearEndOfWindow
+#endif
 
 
 ;------ ------------------------------------------------------------------------
