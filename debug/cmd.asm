@@ -840,13 +840,42 @@ debug_ScBufShowBuffer:
 debug_scBufShowBufferLineLoop:
 	ld	a, (hl)
 	or	a
-	jr	z,  debug_scBufShowBufferClearWindowRemainder
+	jr	z, debug_scBufShowBufferClearWindowRemainder
 	cp	chNewLine
 	jr	z, debug_scBufShowBufferClearEol
 	call	debug_PutC
+	call	debug_ScBufForward
+	jr	z, debug_scBufShowBufferClearWindowRemainder
 	ld	a, (debug_CurCol)
 	or	a
 	jr	nz, debug_scBufShowBufferLineLoop
+debug_scBufShowBufferClearEol:
+	call	debug_NewLineClearEol
+	ld	hl, (debug_CurRow)
+	dec	l
+	ret	z
+	dec	l
+	ld	h, 0
+	ld	(debug_CurRow), hl
+	
+	; TODO: Seek to previous line of text.  Otherwise we won't
+	; actually be printing backwards.
+	; Also, the previous line function needs to be redone.
+	
+	jr	debug_scBufShowBufferLineLoop
+debug_scBufShowBufferClearWindowRemainder:
+	ld	hl, (debug_CurRow)
+_:	ld	a, ' '
+	call	debug_PutC
+	ld	a, (debug_CurCol)
+	or	a
+	jr	nz, -_
+	dec	l
+	ld	a, l
+	cp	255
+	ret	z
+	ld	(debug_CurRow), hl
+	jr	-_
 	
 	
 	
