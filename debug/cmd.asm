@@ -516,6 +516,94 @@ _:	; Not wrapped
 	ret
 
 
+;------ ScBufAddPtr ------------------------------------------------------------
+debug_ScBufAddPtr:
+; Adds DE to HL, and adjusts for buffer wrapping.
+; Do not use with negative offsets.
+; Inputs:
+;  - HL: Pointer
+;  - DE: Offset to add
+; Outputs:
+;  - HL: New pointer
+;  - C if new pointer remains in  buffer
+;  - NC if new pointer would have been outside of buffer
+;    If so, HL is set to ScBufBottom - 1
+; Destroys:
+;  - Flags
+	push	bc
+	push	de
+	add	hl, de
+	ld	bc, (iy + debug_CmdScBufBottom)
+	or	a
+	sbc	hl, bc
+	add	hl, bc
+	jr	c, debug_ScBufAddPtrExit
+	ld	de, (iy + debug_CmdScBufEnd)
+	;or	a	; Implicit NC from above
+	sbc	hl, de
+	add	hl, de
+	jr	nc, +_
+	or	a
+	ld	de, (iy + debug_CmdScBufBottom)
+	jr	debug_ScBufAddPtrExit2
+_:	ex	de, hl
+	ld	bc, (iy + debug_CmdScBufStart)
+	;or	a	; Implicit NC from above
+	sbc	hl, bc
+	ex	de, hl
+	sbc	hl, de	; Implicit NC unless buffer misconfigured
+	ld	de, (iy + debug_CmdScBufBottom)
+	sbc	hl, de
+	add	hl, de
+	jr	c, debug_ScBufAddPtrExit
+	ex	de, hl
+debug_ScBufAddPtrExit2:
+	dec	hl
+debug_ScBufAddPtrExit:
+	pop	de
+	pop	bc
+	ret
+
+
+;------ ScBufCompPtr -----------------------------------------------------------
+debug_ScBufCompPtr:
+; Compares HL to DE in a scroll buffer.
+; Inputs:
+;  - HL: Pointer 1
+;  - DE: Pointer 2
+; Outputs:
+;  - Same as OR A \ SBC HL, DE \ ADD HL, DE
+;  - Z if HL == DE
+;  - NC if HL >= DE, i.e. HL is "after" DE
+; Destroys:
+;  - Nothing
+	push	bc
+	push	hl
+	ld	hl, (iy + debug_CmdScBufEnd)
+	ld	bc, (iy + debug_CmdScBufStart)
+	or	a
+	sbc	hl, de
+	ex	de, hl
+	ld	de, (iy + debug_CmdScBufTop)
+	or	a
+	sbc	hl, de
+	add	hl, de
+	jr	c, +_
+	add	hl, bc
+_:	ex	hl, (sp)
+	or	a
+	sbc	hl, de
+	add	hl, de
+	jr	c, +_
+	add	hl, bc
+_:	pop	de
+	or	a
+	sbc	hl, de
+	add	hl, de
+	pop	bc
+	ret
+
+
 ;------ ScBufNextLine ----------------------------------------------------------
 debug_ScBufNextLine:
 ; Seeks to the next line of the scroll buffer, given the start of a line.
@@ -556,6 +644,32 @@ debug_ScBufPrevLine:
 ;  - Z if seeked to start of buffer and cannot go further back
 ; Destroys:
 ;  - AF
+	push	hl
+	call	debug_ScBufBackward
+	pop	hl
+	ret	z
+	push	bc
+	push	de
+	push	hl
+	pop	bc
+	ld	hl, (iy + debug_CmdScBufTop)
+	
+_:	call	debug_ScBufNextLine
+	jr	z, debug_ScBufPrevLineExit
+	or	a
+	sbc	hl, bc
+	add	hl, bc
+	
+	
+debug_ScBufPrevLineExit:
+	xor	a
+	inc	a
+	pop	de
+	pop	bc
+	ret
+
+
+
 	call	debug_ScBufBackward
 	ret	z	
 	push	bc
