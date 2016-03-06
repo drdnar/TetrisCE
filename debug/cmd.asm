@@ -532,25 +532,45 @@ debug_ScBufAddPtr:
 ;  - Flags
 	push	bc
 	push	de
-	add	hl, de
+	; Split into two cases: HL < Bottom and HL >= Bottom
 	ld	bc, (iy + debug_CmdScBufBottom)
 	or	a
 	sbc	hl, bc
 	add	hl, bc
+	jr	nc, +_
+; Case HL < Bottom
+	; HL += DE;
+	add	hl, de
+	; if (HL < Bottom)
+	;	 return {HL, Carry};
+	or	a
+	sbc	hl, bc
+	add	hl, bc
 	jr	c, debug_ScBufAddPtrExit
+	;or	a	; Implicit NC from above
+	; HL = Bottom; 
+	; return {Bottom - (Bottom == Top ? 0 : 1), NoCarry};
+	sbc	hl, hl	;ld	hl, (iy + debug_CmdScBufBottom)
+	add	hl, bc
+	jr	debug_ScBufAddPtrExit2
+_:; Case HL >= Bottom
+	; HL += DE;
+	add	hl, de	; If this overflows, there'a a problem
+	; if (HL < End)
+	;	 return {HL, Carry};
 	ld	de, (iy + debug_CmdScBufEnd)
 	;or	a	; Implicit NC from above
 	sbc	hl, de
 	add	hl, de
-	jr	nc, +_
-	or	a
-	ld	de, (iy + debug_CmdScBufBottom)
-	jr	debug_ScBufAddPtrExit2
-_:	ex	de, hl
+	jr	c, debug_ScBufAddPtrExit
+	; DE = End - Start
+	ex	de, hl
 	ld	bc, (iy + debug_CmdScBufStart)
 	;or	a	; Implicit NC from above
 	sbc	hl, bc
 	ex	de, hl
+	; if (HL - (End - Start) < Botton)
+	; 	 return {HL, Carry};
 	sbc	hl, de	; Implicit NC unless buffer misconfigured
 	ld	de, (iy + debug_CmdScBufBottom)
 	sbc	hl, de
@@ -558,7 +578,15 @@ _:	ex	de, hl
 	jr	c, debug_ScBufAddPtrExit
 	ex	de, hl
 debug_ScBufAddPtrExit2:
+	; return {Bottom - (Bottom == Top ? 0 : 1), NoCarry};
+	ld	de, (iy + debug_CmdScBufTop)
+	;or	a	; Should be implicit NC
+	sbc	hl, de
+	add	hl, de
 	dec	hl
+	jr	nz, +_
+	ex	de, hl
+_:	or	a
 debug_ScBufAddPtrExit:
 	pop	de
 	pop	bc
@@ -652,6 +680,16 @@ debug_ScBufPrevLine:
 	push	de
 	push	hl
 	pop	bc
+	
+_:	call	debug_ScBufBackward
+	jr	z, +_
+	ld	a, (hl)
+	cp	chNewLine
+	jr	z, +_
+	or	a
+	jr	nz, -_
+_:	
+	
 	ld	hl, (iy + debug_CmdScBufTop)
 	
 _:	call	debug_ScBufNextLine

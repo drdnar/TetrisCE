@@ -1,3 +1,28 @@
+;------ DivHlByC ---------------------------------------------------------------
+debug_DivHlByC:
+; Divides HL (16-bit) by C.
+; Inputs:
+;  - HL: Dividend (16-bit).  The high byte need not be zeroed.
+;  - C: Divisor
+; Outputs:
+;  - HL: Quotient
+;  - A: Remainder
+; Destroys:
+;  - Flags
+	push	bc
+	xor	a
+	ld	b, 16
+_:	add.sis	hl, hl
+	rla
+	cp	c
+	jr	c, $ + 4
+	sub	c
+	inc	l
+	djnz	-_
+	pop	bc
+	ret
+
+
 ;------ CallHl -----------------------------------------------------------------
 debug_CallHl:
 ; Calls HL, or returns immediately if HL is null.
