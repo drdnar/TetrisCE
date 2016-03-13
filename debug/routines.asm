@@ -26,8 +26,14 @@ _:	add.sis	hl, hl
 ;------ CallHl -----------------------------------------------------------------
 debug_CallHl:
 ; Calls HL, or returns immediately if HL is null.
-; Input:
+; AF is not changed before jumping to HL, so you can pass arguments in AF.
+; This is intended for calling event handlers that may be null.  The called
+; routine can return data in AF (and any other registers), but if you need the
+; called routine to actually return data and you need to behave differently if
+; the routine is not specified, you need to check if HL is null yourself.
+; Inputs:
 ;  - HL
+;  - HL on stack
 ; Output:
 ;  - ? ? ?
 ; Destroys:
@@ -40,6 +46,73 @@ debug_CallHl:
 	jp	(hl)
 _:	pop	af
 	ret
+
+
+;------ CallHlPopHl ------------------------------------------------------------
+debug_CallHlPopHl:
+; Calls the routine pointed to by HL, but first, pops a value to be passed to
+; the routine off the stack into HL, so you can do CALL (HL) without losing use
+; of HL as a register to pass an argument in.  So you do something like this:
+; 	ld	hl, valueToPassToRoutine
+; 	push	hl
+; 	ld	hl, ptrToRoutine
+; 	call	debug_CallHlPopHl
+; CallHlPopHl will then load valueToPassToRoutine in HL, and then jump to
+; ptrToRoutine.
+; This routine also checks to make sure that ptrToRoutine is not zero before
+; jumping to it.  If ptrToRoutine is null, it still pops valueToPassToRoutine
+; into HL, but returns without calling it.
+; AF is not changed before jumping to HL, so you can pass arguments in AF.
+; This is intended for calling event handlers that may be null.  The called
+; routine can return data in AF (and any other registers), but if you need the
+; called routine to actually return data and you need to behave differently if
+; the routine is not specified, you need to check if HL is null yourself.
+; Inputs:
+;  - HL
+;  - HL on stack
+; Output:
+;  - ? ? ?
+; Destroys:
+;  - ? ? ?
+	push	af
+	add	hl, de
+	sbc	hl, de
+	push	hl
+	push	ix
+	ld	ix, 0
+	add	ix, sp
+	push	de
+	ld	hl, (ix + 12)
+	ld	de, (ix + 9)
+	ld	(ix + 12), de
+	ld	de, (ix + 3)
+	ld	(ix + 9), de
+	pop	de
+	pop	ix
+#if	YOURE_RUNNING_FROM_FLASH
+	jr	z, +_
+	pop	af
+	pop	af
+	ret
+_:	pop	af
+	pop	af
+	inc	sp
+	inc	sp
+	inc	sp
+	ret
+#else
+	inc	sp
+	inc	sp
+	inc	sp
+	jr	z, +_
+	pop	af
+	ret
+_:	pop	af
+	inc	sp
+	inc	sp
+	inc	sp
+	ret
+#endif
 
 
 ;------ MapTable ---------------------------------------------------------------

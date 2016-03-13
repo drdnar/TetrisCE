@@ -563,15 +563,12 @@ _:; Case HL >= Bottom
 	sbc	hl, de
 	add	hl, de
 	jr	c, debug_ScBufAddPtrExit
-	; DE = End - Start
-	ex	de, hl
-	ld	bc, (iy + debug_CmdScBufStart)
-	;or	a	; Implicit NC from above
-	sbc	hl, bc
-	ex	de, hl
-	; if (HL - (End - Start) < Botton)
-	; 	 return {HL, Carry};
-	sbc	hl, de	; Implicit NC unless buffer misconfigured
+	; HL -= End - Start;
+	sbc	hl, de
+	ld	de, (iy + debug_CmdScBufStart)
+	add	hl, de
+	; if (HL < Bottom)
+	; 	 return {HL, Carry}
 	ld	de, (iy + debug_CmdScBufBottom)
 	sbc	hl, de
 	add	hl, de
@@ -593,16 +590,118 @@ debug_ScBufAddPtrExit:
 	ret
 
 
+;------ ScBufSubtractPtr -------------------------------------------------------
+debug_ScBufSubtractPtr:
+; Subtracts DE from HL, and adjusts for buffer wrapping.
+; Do not use with negative offsets.
+; Inputs:
+;  - HL: Pointer
+;  - DE: Offset to subtract
+; Outputs:
+;  - HL: New pointer
+;  - NC if new pointer remains in  buffer
+;  - C if new pointer would have been outside of buffer
+;    If so, HL is set to ScBufTop
+; Destroys:
+;  - Flags
+debug_ScBufSubtractPtr:
+	push	bc
+	push	de
+	; if (HL >= Top) { ...
+	ld	bc, (iy + debug_CmdScBufTop)
+	or	a
+	sbc	hl, bc
+	add	hl, bc
+	jr	c, +_
+; HL >= Top
+	; HL -= DE;
+	;or	a	; Implicit NC from above
+	sbc	hl, de
+	; if (HL >= Top)
+	; 	 return {HL, NoCarry};
+	; else
+	; 	 return {Top, Carry};
+	;or	a	; Implicit NC unless weirdness
+	sbc	hl, bc
+	add	hl, bc
+	jr	nc, debug_scBufSubtractPtrExit
+	jr	debug_scBufSubtractPtrExit2
+_: ; HL < Top
+	; HL -= DE;
+	or	a
+	sbc	hl, de
+	; if (HL >= Start)
+	; 	 return {HL, NoCarry};
+	ld	de, (iy + debug_CmdScBufStart)
+	;or	a	; Implicit NC unless weirdness
+	sbc	hl, de
+	add	hl, de
+	jr	nc, debug_scBufSubtractPtrExit
+	; HL += End - Start
+	or	a
+	sbc	hl, de
+	ld	de, (iy + debug_CmdScBufEnd)
+	add	hl, de
+	; if (HL >= Bottom)
+	; 	 return {HL, NC};
+	ld	de, (iy + debug_CmdScBufBottom)
+	or	a
+	sbc	hl, de
+	add	hl, de
+	jr	nc, debug_scBufSubtractPtrExit
+debug_scBufSubtractPtrExit2:
+	or	a
+	sbc	hl, hl
+	add	hl, bc
+	scf
+debug_scBufSubtractPtrExit:
+	pop	de
+	pop	bc
+	ret
+
+
+;------ ScBufDeltaPtr ----------------------------------------------------------
+; Computes HL - DE, with HL and DE as pointers.
+; SubtractPtr is for subtracting an offset from a pointer, while this is for
+; getting an offset.
+; Inputs:
+;  - HL: Pointer, must be "after" DE
+;  - DE: Pointer
+; Outputs:
+;  - HL: Difference
+; Destroys:
+;  - Flags
+debug_ScBufDeltaPtr:
+	or	a
+	sbc	hl, de
+	ret	nc
+	add	hl, de
+	push	bc
+	ld	bc, (iy + debug_CmdScBufBottom)
+	or	a
+	sbc	hl, bc
+	add	hl, de
+	jr	nc, +_
+	ld	bc, (iy + debug_CmdScBufStart)
+	or	a
+	sbc	hl, bc
+	ld	bc, (iy + debug_CmdScBufEnd)
+	add	hl, bc
+	sbc	hl, de
+_:	pop	bc
+	ret
+
+
 ;------ ScBufCompPtr -----------------------------------------------------------
 debug_ScBufCompPtr:
-; Compares HL to DE in a scroll buffer.
+; Compares HL to DE in a scroll buffer, adjusting for wrapping.
 ; Inputs:
 ;  - HL: Pointer 1
 ;  - DE: Pointer 2
 ; Outputs:
 ;  - Same as OR A \ SBC HL, DE \ ADD HL, DE
 ;  - Z if HL == DE
-;  - NC if HL >= DE, i.e. HL is "after" DE
+;  - NC if HL is "after" DE, i.e. HL >= DE
 ; Destroys:
 ;  - Nothing
 	push	bc
@@ -678,9 +777,10 @@ debug_ScBufPrevLine:
 	ret	z
 	push	bc
 	push	de
-	push	hl
-	pop	bc
-	
+	ex	de, hl
+	or	a
+	sbc	hl, hl
+	add	hl, de	
 _:	call	debug_ScBufBackward
 	jr	z, +_
 	ld	a, (hl)
@@ -688,17 +788,17 @@ _:	call	debug_ScBufBackward
 	jr	z, +_
 	or	a
 	jr	nz, -_
-_:	
-	
-	ld	hl, (iy + debug_CmdScBufTop)
-	
-_:	call	debug_ScBufNextLine
-	jr	z, debug_ScBufPrevLineExit
+_:	ex	de, hl
+	call	ScBufDeltaPtr
+	ld	c, debug_Cols
+	call	debug_DivHlByC
+	ld	a, l
 	or	a
-	sbc	hl, bc
-	add	hl, bc
-	
-	
+	jr	z, debug_ScBufPrevLineExit
+	dec	l
+	ld	h, debug_Cols
+	mlt	hl
+	add	hl, de	
 debug_ScBufPrevLineExit:
 	xor	a
 	inc	a
@@ -706,8 +806,7 @@ debug_ScBufPrevLineExit:
 	pop	bc
 	ret
 
-
-
+#ifdef	NEVER
 	call	debug_ScBufBackward
 	ret	z	
 	push	bc
@@ -725,6 +824,7 @@ _:	call	debug_ScBufForward
 	inc	a
 	pop	bc
 	ret
+#endif
 
 
 ;------ ScBufFlushALine --------------------------------------------------------
