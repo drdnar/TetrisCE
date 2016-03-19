@@ -1167,21 +1167,21 @@ debug_fontDataTable:
 	.db	00000000b
 	; Code point 69 i i
 	.db	00000000b
-	.db	01100000b
+	.db	00110000b
 	.db	00000000b
-	.db	01100000b
-	.db	01100000b
-	.db	01100000b
-	.db	01100000b
-	.db	01100000b
+	.db	00110000b
+	.db	00110000b
+	.db	00110000b
+	.db	00110000b
+	.db	00110000b
 	.db	00000000b
 	.db	00000000b
 	; Code point 6A j j
 	.db	00000000b
 	.db	00011000b
-	.db	00011000b
 	.db	00000000b
 	.db	00111000b
+	.db	00011000b
 	.db	00011000b
 	.db	00011000b
 	.db	00011000b
