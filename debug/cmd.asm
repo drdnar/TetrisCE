@@ -251,8 +251,8 @@ debug_testBufferKeys:
 	.dl	debug_TestPrint
 debug_testBufferKeysEnd:
 debug_testScBufShow:
-	ld	hl, (iy + debug_CmdScBufTop)
-	call	debug_ScBufShowBuffer
+	ld	hl, (iy + debug_CmdScBufBottomLine)	;debug_CmdScBufTop
+	call	debug_ScBufRefreshBufferDumb;debug_ScBufShowBuffer
 	jr	debug_testScBufKeyLoop
 debug_testScBufClear:
 	call	debug_ScBufClear
@@ -267,7 +267,7 @@ debug_testScBufFlushALine:
 	jr	debug_testScBufShow
 debug_testScBufRefreshBuffer:
 	call	debug_ScBufRefreshBuffer
-	jr	debug_testScBufShow
+	jp	debug_testScBufKeyLoop;jr	debug_testScBufShow
 	
 	
 	ld	hl, (iy + debug_CmdScBufTop)
@@ -717,7 +717,7 @@ debug_ScBufCompPtr:
 	add	hl, de
 	jr	c, +_
 	add	hl, bc
-_:	ex	hl, (sp)
+_:	ex	(sp), hl
 	or	a
 	sbc	hl, de
 	add	hl, de
@@ -789,7 +789,7 @@ _:	call	debug_ScBufBackward
 	or	a
 	jr	nz, -_
 _:	ex	de, hl
-	call	ScBufDeltaPtr
+	call	debug_ScBufDeltaPtr
 	ld	c, debug_Cols
 	call	debug_DivHlByC
 	ld	a, l
@@ -1056,6 +1056,7 @@ debug_ScBufGetLastLine:
 	ld	a, (iy + debug_CmdScBufCol)
 	or	a
 	jp	z, debug_ScBufPrevLine
+	; TODO: Use SubtractPtr here.  Duh.
 	ld	b, a
 _:	call	debug_ScBufBackward
 	djnz	-_
@@ -1084,10 +1085,10 @@ debug_ScBufShowBuffer:
 ;  - AF, BC, DE, HL
 ;  - Cursor position
 
-	ld	l, (iy + debug_CmdScBufBottomLine)
-	dec	l
-	ld	h, 0
-	ld	(debug_CurRow), hl
+	ld	e, (iy + debug_CmdScBufBottomLine)
+	dec	e
+	ld	d, 0
+	ld	(debug_CurRow), de
 	
 debug_scBufShowBufferLineLoop:
 	ld	a, (hl)
@@ -1103,6 +1104,7 @@ debug_scBufShowBufferLineLoop:
 	jr	nz, debug_scBufShowBufferLineLoop
 debug_scBufShowBufferClearEol:
 	call	debug_NewLineClearEol
+	push	hl
 	ld	hl, (debug_CurRow)
 	dec	l
 	ret	z
@@ -1114,10 +1116,15 @@ debug_scBufShowBufferClearEol:
 	; actually be printing backwards.
 	; Also, the previous line function needs to be redone.
 	
+	pop	hl
+	call	debug_ScBufPrevLine
+	
+	
+	
 	jr	debug_scBufShowBufferLineLoop
 debug_scBufShowBufferClearWindowRemainder:
 	ld	hl, (debug_CurRow)
-_:	ld	a, ' '
+_:	ld	a, 10h;' '
 	call	debug_PutC
 	ld	a, (debug_CurCol)
 	or	a
@@ -1133,7 +1140,7 @@ _:	ld	a, ' '
 	
 	
 	
-	
+#ifdef	NEVER
 debug_scBufShowBufferLoop:	
 	; This needs a customized version that pays attention to the cached column number.
 	call	debug_ScBufPrevLine
@@ -1182,7 +1189,7 @@ debug_scBufShowBufferClearWindowRemainder:
 	call	z, debug_NewLineClearEol
 	call	debug_ScBufForward
 	jr	nz, debug_scBufShowBufferLoop
-
+#endif
 
 
 #ifdef	NEVER
