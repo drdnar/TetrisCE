@@ -118,7 +118,7 @@ debug_Cmd0Clear:
 	.db	0			; debug_CmdScBufCol
 	.db	0			; debug_CmdScBufUnused
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufStart
-	.dl	debug_OutputBuffer1 + 128;debug_OutputBufferSize	; debug_CmdOutBufEnd
+	.dl	debug_OutputBuffer1 + 256;128;debug_OutputBufferSize	; debug_CmdOutBufEnd
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufTop
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufBottom
 	.dl	debug_HistoryBuffer1	; debug_CmdHistStart
@@ -133,15 +133,15 @@ debug_Cmd0Clear:
 debug_testStuff:
 	.db	6
 	.db	0
-	.db	0
+	.db	46
 	.db	0
 	.dl	debug_OutputBuffer1	; debug_CmdOutBufStart
-	.dl	debug_OutputBuffer1 + 128;debug_OutputBufferSize	; debug_CmdOutBufEnd
+	.dl	debug_OutputBuffer1 + 512;128;debug_OutputBufferSize	; debug_CmdOutBufEnd
 	.dl	debug_OutputBuffer1 + 0	; debug_CmdOutBufTop
-	.dl	debug_OutputBuffer1 + 96	; debug_CmdOutBufBottom
+	.dl	debug_OutputBuffer1 + 350;96	; debug_CmdOutBufBottom
 
 debug_testStr:
-	.db	"I am happy to join with you today in what will go down in history as the greatest demonstration for freedom in the history of our nation. Five score years ago, a great American, in whose symbolic shadow we stand, signed the Emancipation Proclamation. "
+	.db	"I am happy to join with you today in what will go down in history as the greatest demonstration for freedom in the history of our nation. Five score years ago, a great American, in whose symbolic shadow we stand, signed the Emancipation Proclamation.", chNewLine
 	.db	"This momentous decree came as a great beacon light of hope to millions of Negro slaves who had been seared in the flames of withering injustice. "
 	.db	"It came as a joyous daybreak to end the long night of captivity. But 100 years later, we must face the tragic. . . .", 0
 
@@ -251,7 +251,7 @@ debug_testBufferKeys:
 	.dl	debug_TestPrint
 debug_testBufferKeysEnd:
 debug_testScBufShow:
-	ld	hl, (iy + debug_CmdScBufBottomLine)	;debug_CmdScBufTop
+	ld	hl, (iy + debug_CmdScBufTop)
 	call	debug_ScBufRefreshBufferDumb;debug_ScBufShowBuffer
 	jr	debug_testScBufKeyLoop
 debug_testScBufClear:
@@ -1066,6 +1066,8 @@ _:	call	debug_ScBufBackward
 ;------ ScBufRefreshBuffer -----------------------------------------------------
 debug_ScBufRefreshBuffer:
 ; Refreshes the buffer display.
+; This starts at the last line and prints up until it reaches the top of the
+; screen or the top of the buffer.
 	ld	a, (iy + debug_CmdScBufBottomLine)
 	or	a
 	ret	z
@@ -1090,38 +1092,34 @@ debug_ScBufShowBuffer:
 	ld	d, 0
 	ld	(debug_CurRow), de
 	
+	call	debug_ScBufIsEmpty
+	jr	z, debug_scBufShowBufferClearWindowRemainder
 debug_scBufShowBufferLineLoop:
-	ld	a, (hl)
+	push	hl
+	pop	ix
+_:	ld	a, (hl)
 	or	a
 	jr	z, debug_scBufShowBufferClearWindowRemainder
 	cp	chNewLine
 	jr	z, debug_scBufShowBufferClearEol
 	call	debug_PutC
 	call	debug_ScBufForward
-	jr	z, debug_scBufShowBufferClearWindowRemainder
+	jr	z, debug_scBufShowBufferClearEol;debug_scBufShowBufferClearWindowRemainder
 	ld	a, (debug_CurCol)
 	or	a
-	jr	nz, debug_scBufShowBufferLineLoop
+	jr	nz, -_
+	jr	+_
 debug_scBufShowBufferClearEol:
 	call	debug_NewLineClearEol
-	push	hl
-	ld	hl, (debug_CurRow)
+_:	ld	hl, (debug_CurRow)
 	dec	l
 	ret	z
 	dec	l
 	ld	h, 0
-	ld	(debug_CurRow), hl
-	
-	; TODO: Seek to previous line of text.  Otherwise we won't
-	; actually be printing backwards.
-	; Also, the previous line function needs to be redone.
-	
-	pop	hl
+	ld	(debug_CurRow), hl	
+	lea	hl, ix + 0
 	call	debug_ScBufPrevLine
-	
-	
-	
-	jr	debug_scBufShowBufferLineLoop
+	jr	nz, debug_scBufShowBufferLineLoop
 debug_scBufShowBufferClearWindowRemainder:
 	ld	hl, (debug_CurRow)
 _:	ld	a, 10h;' '
@@ -1135,116 +1133,6 @@ _:	ld	a, 10h;' '
 	ret	z
 	ld	(debug_CurRow), hl
 	jr	-_
-	
-	
-	
-	
-	
-#ifdef	NEVER
-debug_scBufShowBufferLoop:	
-	; This needs a customized version that pays attention to the cached column number.
-	call	debug_ScBufPrevLine
-	xor	a
-	ld	(debug_CurCol), a
-
-;debug_scBufShowBufferLineLoop:
-	ld	a, (hl)
-	or	a
-	jr	z,  debug_scBufShowBufferClearWindowRemainder
-	cp	chNewLine
-	jr	z, debug_scBufShowBufferClearEol
-	call	debug_PutC
-	ld	a, (debug_CurCol)
-	or	a
-	jr	nz, debug_scBufShowBufferLineLoop
-debug_scBufShowBufferClearEol:
-	call	debug_NewLineClearEol2
-	ld	a, (debug_CurRow)
-	dec	a
-	ret	z
-	dec	a
-	ld	(debug_CurRow), a
-	call	debug_ScBufPrevLine
-	jr	debug_scBufShowBufferLoop
-debug_scBufShowBufferClearWindowRemainder:
-	call	debug_NewLineClearEol2
-	ld	a, (debug_CurRow)
-	dec	a
-	ret	z
-	dec	a
-	ld	(debug_CurRow), a
-	jr	debug_scBufShowBufferClearWindowRemainder
-
-	
-	
-	
-	ld	a, (debug_CurRow)
-	cp	(iy + debug_CmdScBufBottomLine)
-	ret	nc
-	ld	a, (hl)
-	or	a
-	ret	z
-	cp	debug_chNewLine
-	call	nz, debug_PutC
-	call	z, debug_NewLineClearEol
-	call	debug_ScBufForward
-	jr	nz, debug_scBufShowBufferLoop
-#endif
-
-
-#ifdef	NEVER
-;------ ScBufRefreshBuffer -----------------------------------------------------
-debug_ScBufRefreshBuffer:
-; Refreshes the buffer display.
-	ld	a, (iy + debug_CmdScBufBottomLine)
-	or	a
-	ret	z
-	ld	b, a
-	ld	hl, (iy + debug_CmdScBufBottom)
-_:	call	debug_ScBufPrevLine
-	djnz	-_
-	
-	; Fall through to ScBufShowBuffer
-;------ ScBufShowBuffer --------------------------------------------------------
-debug_ScBufShowBuffer:
-; Shows the buffer starting at a given position in the scroll buffer, and prints
-; until CmdScBufBottom or it runs out of buffer.
-; Input:
-;  - HL: Start position
-;  - IY: Pointer to scroll buffer struct
-; Output:
-;  - Documented effect(s)
-; Destroys:
-;  - AF, BC, DE, HL
-;  - Cursor positon
-	push	hl
-;	call	debug_ScBufPrintVars
-	ld	hl, 0
-	ld	(debug_CurRow), hl
-	ld	hl, (iy + debug_CmdScBufTop)
-	ld	de, (iy + debug_CmdScBufBottom)
-	sbc	hl, de
-	pop	hl
-	jr	z, debug_scBufShowBufferClearEndOfWindow
-debug_scBufShowBufferLoop:
-	ld	a, (debug_CurRow)
-	cp	(iy + debug_CmdScBufBottomLine)
-	ret	nc
-	ld	a, (hl)
-	or	a
-	ret	z
-	cp	debug_chNewLine
-	call	nz, debug_PutC
-	call	z, debug_NewLineClearEol
-	call	debug_ScBufForward
-	jr	nz, debug_scBufShowBufferLoop
-debug_scBufShowBufferClearEndOfWindow:
-	ld	a, (debug_CurRow)
-	cp	(iy + debug_CmdScBufBottomLine)
-	ret	nc
-	call	debug_NewLineClearEol
-	jr	debug_scBufShowBufferClearEndOfWindow
-#endif
 
 
 ;------ ------------------------------------------------------------------------
